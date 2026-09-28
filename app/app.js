@@ -43,6 +43,9 @@
   const dataBR = (iso) => (iso && /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso.split('-').reverse().join('/') : iso || '');
   const fmt = (v, suf) => (v == null || v === '' ? '—' : String(v).replace('.', ',') + (suf || ''));
   const novoId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  // Código visível da avaliação (derivado do identificador interno, que nunca muda).
+  // É por ele que o "Restaurar backup" reconhece a mesma avaliação em outro aparelho.
+  const codigo = (a) => { const c = String(a.id || '').slice(-6).toUpperCase(); return c.slice(0, 3) + '-' + c.slice(3); };
 
   function getPath(o, path) {
     return path.split('.').reduce((a, k) => (a == null ? undefined : a[k]), o);
@@ -63,7 +66,7 @@
     let el = $('#toast');
     if (!el) { el = document.createElement('div'); el.id = 'toast'; el.className = 'toast'; document.body.appendChild(el); }
     el.textContent = msg; el.classList.remove('hidden');
-    clearTimeout(toastT); toastT = setTimeout(() => el.classList.add('hidden'), 2600);
+    clearTimeout(toastT); toastT = setTimeout(() => el.classList.add('hidden'), msg.length > 80 ? 6000 : 2600);
   }
   function vibrar(p) { try { navigator.vibrate && navigator.vibrate(p); } catch (e) { /* ok */ } }
   function bip() {
@@ -209,7 +212,9 @@
       () => ({
         sub: 'Aluno',
         html: '<div class="card"><h2>Identificação</h2>' +
+          '<p class="muted" style="margin:0">Código desta avaliação: <b>' + codigo(a) + '</b></p>' +
           campo('cab.nome', 'Nome do aluno', 'text', 'autocomplete="off"') +
+          campo('cab.matricula', 'Nº do aluno — matrícula ou nº de chamada (opcional)', 'text', 'autocomplete="off" inputmode="numeric"') +
           '<label class="f">Turma</label>' + (PREF.turmas.length ? chips('cab.turma', PREF.turmas.slice(0, 8)) : '') +
           '<input type="text" data-f="cab.turma" value="' + esc(a.cab.turma) + '" placeholder="ou digite a turma" style="margin-top:8px">' +
           '<div class="row"><div>' + campo('cab.idade', 'Idade', 'number') + '</div><div>' + campo('cab.data', 'Data', 'date') + '</div></div>' +
@@ -720,6 +725,7 @@
       h += '<div class="card aluno" data-a="abrir" data-v="' + a.id + '" role="button">' +
         '<div class="perfil ' + (perf ? 'p' + perf : '') + '" title="' + (conf ? 'confirmado' : 'sugerido') + '">' + (perf || '?') + (perf && !conf ? '<small style="font-size:10px">?</small>' : '') + '</div>' +
         '<div class="info"><div class="nome">' + esc(a.cab.nome || '(sem nome)') + '</div><div class="muted">' + esc(a.cab.turma || '—') + ' · ' + dataBR(a.cab.data) + ' · Forma ' + (a.cab.forma || '?') + '</div>' +
+        '<div class="muted" style="font-size:12px">Cód. ' + codigo(a) + (a.cab.avaliador ? ' · ' + esc(a.cab.avaliador) : '') + '</div>' +
         '<div class="minibar"><div style="width:' + progressoGeral(a) + '%"></div></div></div></div>';
     });
     const acao = '<div class="row"><button class="btn small" data-a="exportarTodos">⬇ Excel (todos)</button><button class="btn small" data-a="backup">💾 Backup</button></div>' +
@@ -731,7 +737,7 @@
     const a = av();
     const st = R.statusModulos(a);
     const rot = { nao: 'não iniciado', andamento: 'em andamento', ok: 'completo', pulado: 'pulado' };
-    let h = '<div class="card"><h2>' + esc(a.cab.nome || '(sem nome)') + '</h2><span class="muted">' + esc(a.cab.turma || '') + ' · ' + dataBR(a.cab.data) + ' · Forma ' + (a.cab.forma || '?') + '</span></div>';
+    let h = '<div class="card"><h2>' + esc(a.cab.nome || '(sem nome)') + '</h2><span class="muted">' + esc(a.cab.turma || '') + ' · ' + dataBR(a.cab.data) + ' · Forma ' + (a.cab.forma || '?') + '<br>Código da avaliação: <b>' + codigo(a) + '</b>' + (a.cab.matricula ? ' · Nº do aluno: ' + esc(a.cab.matricula) : '') + '</span></div>';
     MODS.forEach((m) => {
       h += '<button class="mod st-' + st[m] + '" data-a="abrirMod" data-v="' + m + '"><span class="num">' + (st[m] === 'ok' ? '✓' : NOMES[m][0]) + '</span>' +
         '<span class="t">' + (m === 'cab' ? '' : 'Módulo ' + NOMES[m][0] + ' — ') + NOMES[m][1] + '<small>' + NOMES[m][2] + '</small></span>' +
@@ -748,7 +754,7 @@
     const c = R.calcular(a, CFG);
     const arv = c.arvore;
     const tx = R.textos(a.cab.forma);
-    let h = '<div class="card"><h2>' + esc(a.cab.nome || '(sem nome)') + '</h2><div class="muted">' + esc(a.cab.turma || '') + ' · ' + esc(a.cab.idade ? a.cab.idade + ' anos' : '') + ' · ' + dataBR(a.cab.data) + ' · Avaliador(a): ' + esc(a.cab.avaliador || '—') +
+    let h = '<div class="card"><h2>' + esc(a.cab.nome || '(sem nome)') + '</h2><div class="muted">' + esc(a.cab.turma || '') + ' · ' + esc(a.cab.idade ? a.cab.idade + ' anos' : '') + ' · ' + dataBR(a.cab.data) + ' · Avaliador(a): ' + esc(a.cab.avaliador || '—') + '<br>Código da avaliação: <b>' + codigo(a) + '</b>' + (a.cab.matricula ? ' · Nº do aluno: ' + esc(a.cab.matricula) : '') +
       '<br>Forma ' + (a.cab.forma || '?') + (tx.lido ? ' (lê ' + tx.lido + ', ouve ' + tx.ouvido + ')' : '') + ' · Triagem ' + fmt(a.cab.triagem) + '/8 · EL Parte A ' + fmt(a.cab.elA) + '/50</div></div>';
 
     // Tabela de critérios
@@ -1053,6 +1059,7 @@
     const m6 = a.m6 || {}, nl = m6.nl || {}, nn = m6.nn || {};
     const res = a.res || {};
     const o = {
+      'Código da avaliação': codigo(a), 'Nº do aluno': cab.matricula || '',
       'Nome': cab.nome || '', 'Turma': cab.turma || '', 'Idade': num(cab.idade), 'Data': dataBR(cab.data), 'Avaliador(a)': cab.avaliador || '',
       'Triagem (/8)': num(cab.triagem), 'EL Parte A (/50)': num(cab.elA),
       'Domínios em risco': (cab.dominios || []).concat(cab.dominioOutro ? [cab.dominioOutro] : []).join(', '),
@@ -1104,6 +1111,7 @@
     const cab = a.cab || {};
     const rows = [];
     const add = (modulo, parte, n, grupo, item, resultado, pontos, obs) => rows.push({
+      'Código da avaliação': codigo(a), 'Nº do aluno': cab.matricula || '',
       'Nome': cab.nome || '', 'Turma': cab.turma || '', 'Data': dataBR(cab.data), 'Módulo': modulo, 'Parte': parte, 'Nº': n, 'Grupo/tipo': grupo || '', 'Item': item,
       'Resultado': resultado == null ? '' : resultado, 'Pontos': pontos == null ? '' : pontos, 'Como leu / escreveu / anotação': obs || '',
     });
@@ -1206,7 +1214,7 @@
         });
         gravar(K_DB, DB);
         S.tela = 'lista'; render();
-        toast('Restaurado: ' + novos + ' novas, ' + atualizados + ' atualizadas, ' + mantidos + ' já estavam iguais ou mais novas.');
+        toast('Backup restaurado: ' + novos + ' avaliação(ões) adicionada(s), ' + atualizados + ' atualizada(s), ' + mantidos + ' sem mudança (você já tinha a versão igual ou mais nova).');
       } catch (e) { toast('Arquivo de backup inválido.'); }
     };
     fr.readAsText(file);
