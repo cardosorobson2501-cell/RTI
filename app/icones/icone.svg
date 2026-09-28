@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#1f5fbf"/>
+  <path d="M96 150c56-22 112-22 160 10v240c-48-32-104-32-160-10z" fill="#fff"/>
+  <path d="M416 150c-56-22-112-22-160 10v240c48-32 104-32 160-10z" fill="#dce8fb"/>
+  <path d="M300 280l36 36 70-80" fill="none" stroke="#1e8a4c" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="256" y="112" text-anchor="middle" font-family="Arial, sans-serif" font-weight="800" font-size="64" fill="#fff">TIER 2</text>
+</svg>
