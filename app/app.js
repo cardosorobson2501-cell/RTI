@@ -189,10 +189,12 @@
       return '<button class="chip' + (on ? ' on' : '') + '" data-a="' + (multi ? 'chipMulti' : 'chip') + '" data-p="' + path + '" data-v="' + esc(val) + '">' + esc(lab) + '</button>';
     }).join('') + '</div>';
   }
-  function campo(path, rotulo, tipo, extra) {
+  function campo(path, rotulo, tipo, extra, erro) {
     const v = getPath(av(), path);
-    if (tipo === 'area') return (rotulo ? '<label class="f">' + esc(rotulo) + '</label>' : '') + '<textarea data-f="' + path + '" ' + (extra || '') + '>' + esc(v) + '</textarea>';
-    return (rotulo ? '<label class="f">' + esc(rotulo) + '</label>' : '') + '<input type="' + (tipo || 'text') + '" data-f="' + path + '"' + (tipo === 'number' ? ' inputmode="numeric" data-num="1"' : '') + ' value="' + esc(v) + '" ' + (extra || '') + '>';
+    const cls = erro ? ' class="erro"' : '';
+    const msg = erro ? '<div class="erro-msg">' + esc(erro) + '</div>' : '';
+    if (tipo === 'area') return (rotulo ? '<label class="f">' + esc(rotulo) + '</label>' : '') + '<textarea data-f="' + path + '"' + cls + ' ' + (extra || '') + '>' + esc(v) + '</textarea>' + msg;
+    return (rotulo ? '<label class="f">' + esc(rotulo) + '</label>' : '') + '<input type="' + (tipo || 'text') + '" data-f="' + path + '"' + cls + (tipo === 'number' ? ' inputmode="numeric" data-num="1"' : '') + ' value="' + esc(v) + '" ' + (extra || '') + '>' + msg;
   }
   function stat(rotulo, valor, cls) { return '<div class="stat ' + (cls || '') + '"><b>' + valor + '</b><span>' + esc(rotulo) + '</span></div>'; }
   function botaoProxModulo(mod) {
@@ -205,22 +207,39 @@
     return h;
   }
 
+  /* ---------- CABEÇALHO: validação dos campos obrigatórios ---------- */
+  // Nome completo = pelo menos duas partes com letra (evita "joão", aceita "joão da silva", "ana d'ávila").
+  function nomeCompleto(v) {
+    return String(v || '').trim().split(/\s+/).filter((p) => /\p{L}/u.test(p)).length >= 2;
+  }
+  function validarCab0(a) {
+    const erros = {};
+    if (!nomeCompleto(a.cab.nome)) erros.nome = String(a.cab.nome || '').trim() ? 'Digite o nome completo do aluno (nome e sobrenome).' : 'Obrigatório: digite o nome completo do aluno.';
+    if (!String(a.cab.turma || '').trim()) erros.turma = 'Obrigatório: informe a turma.';
+    if (!String(a.cab.avaliador || '').trim()) erros.avaliador = 'Obrigatório: informe o nome do avaliador(a).';
+    return erros;
+  }
+
   /* ---------- CABEÇALHO ---------- */
   function passosCab() {
     const a = av();
     return [
-      () => ({
-        sub: 'Aluno',
-        html: '<div class="card"><h2>Identificação</h2>' +
-          '<p class="muted" style="margin:0">Código desta avaliação: <b>' + codigo(a) + '</b></p>' +
-          campo('cab.nome', 'Nome do aluno', 'text', 'autocomplete="off"') +
-          campo('cab.matricula', 'Nº do aluno — matrícula ou nº de chamada (opcional)', 'text', 'autocomplete="off" inputmode="numeric"') +
-          '<label class="f">Turma</label>' + (PREF.turmas.length ? chips('cab.turma', PREF.turmas.slice(0, 8)) : '') +
-          '<input type="text" data-f="cab.turma" value="' + esc(a.cab.turma) + '" placeholder="ou digite a turma" style="margin-top:8px">' +
-          '<div class="row"><div>' + campo('cab.idade', 'Idade', 'number') + '</div><div>' + campo('cab.data', 'Data', 'date') + '</div></div>' +
-          campo('cab.avaliador', 'Avaliador(a)', 'text') + '</div>',
-        acao: '<button class="btn pri" data-a="prox">Próximo →</button>',
-      }),
+      () => {
+        const erros = S.cabErros || {};
+        return {
+          sub: 'Aluno',
+          html: '<div class="card"><h2>Identificação</h2>' +
+            '<p class="muted" style="margin:0">Código desta avaliação: <b>' + codigo(a) + '</b></p>' +
+            campo('cab.nome', 'Nome completo do aluno', 'text', 'autocomplete="off"' + (erros.nome ? ' data-foco="1"' : ''), erros.nome) +
+            campo('cab.matricula', 'Nº do aluno — matrícula ou nº de chamada (opcional)', 'text', 'autocomplete="off" inputmode="numeric"') +
+            '<label class="f">Turma</label>' + (PREF.turmas.length ? chips('cab.turma', PREF.turmas.slice(0, 8)) : '') +
+            '<input type="text" data-f="cab.turma" class="' + (erros.turma ? 'erro' : '') + '" value="' + esc(a.cab.turma) + '" placeholder="ou digite a turma" style="margin-top:8px">' +
+            (erros.turma ? '<div class="erro-msg">' + esc(erros.turma) + '</div>' : '') +
+            '<div class="row"><div>' + campo('cab.idade', 'Idade', 'number') + '</div><div>' + campo('cab.data', 'Data', 'date') + '</div></div>' +
+            campo('cab.avaliador', 'Avaliador(a)', 'text', '', erros.avaliador) + '</div>',
+          acao: '<button class="btn pri" data-a="proxCab0">Próximo →</button>',
+        };
+      },
       () => ({
         sub: 'Triagem',
         html: '<div class="card"><h2>Dados da triagem</h2>' +
@@ -864,6 +883,7 @@
   }
 
   function novaAvaliacao() {
+    S.cabErros = null;
     const a = {
       id: novoId(), criado: Date.now(), atualizado: Date.now(),
       cab: { nome: '', turma: PREF.turma || '', idade: '', data: hoje(), avaliador: PREF.avaliador || '', dominios: [], forma: null },
@@ -896,6 +916,13 @@
     config: () => { S.tela = 'config'; render(); },
     voltar,
     prox,
+    proxCab0: () => {
+      const a = av();
+      const erros = validarCab0(a);
+      if (Object.keys(erros).length) { S.cabErros = erros; toast('Corrija os campos destacados.'); render(); return; }
+      S.cabErros = null;
+      prox();
+    },
     abrirMod: (d) => abrirMod(d.v),
     apagar: () => {
       const a = av();
@@ -919,7 +946,7 @@
     setAvanca: (d) => { const a = av(); setPath(a, d.p, d.v); salvar(a); prox(); },
     toggle: (d) => { const a = av(); setPath(a, d.p, !getPath(a, d.p)); salvar(a); render(); },
     toggleR: (d) => { const a = av(); setPath(a, d.p, !getPath(a, d.p)); salvar(a); render(); },
-    chip: (d) => { const a = av(); setPath(a, d.p, getPath(a, d.p) === d.v ? null : d.v); salvar(a); if (d.p === 'cab.turma') lembrarPrefs(); render(); },
+    chip: (d) => { const a = av(); setPath(a, d.p, getPath(a, d.p) === d.v ? null : d.v); salvar(a); if (d.p === 'cab.turma') { lembrarPrefs(); if (S.cabErros) delete S.cabErros.turma; } render(); },
     chipMulti: (d) => {
       const a = av(); let v = getPath(a, d.p) || [];
       v = v.includes(d.v) ? v.filter((x) => x !== d.v) : v.concat([d.v]);
@@ -1001,6 +1028,11 @@
       let v = el.value;
       if (el.dataset.num) v = v === '' ? null : Number(String(v).replace(',', '.'));
       setPath(a, el.dataset.f, v); salvar(a);
+      if (S.cabErros && ['cab.nome', 'cab.turma', 'cab.avaliador'].includes(el.dataset.f)) {
+        el.classList.remove('erro');
+        const m = el.nextElementSibling; if (m && m.classList.contains('erro-msg')) m.remove();
+        delete S.cabErros[el.dataset.f.replace('cab.', '')];
+      }
     } else if (el.dataset.cfg) {
       CFG[el.dataset.cfg] = el.value === '' ? 100 : Number(el.value); gravar(K_CFG, CFG);
     }
