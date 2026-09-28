@@ -238,3 +238,15 @@ details.texto-ref { margin: 8px 0; }
 details.texto-ref summary { font-weight: 600; color: var(--pri); padding: 8px 0; }
 .texto-ler { font-size: 19px; line-height: 1.6; }
 .texto-ler p { margin: 0 0 12px; }
+
+/* ---------- segurança dos dados ---------- */
+.alerta.seg { display: block; }
+.alerta.seg .btn { margin: 8px 0 0; }
+.alerta .btn.small { width: 100%; }
+.linha-cfg { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 15px; }
+.linha-cfg:first-of-type { border-top: 0; }
+.linha-cfg > span:first-child { flex: 1; min-width: 0; }
+.linha-cfg .btn { width: auto; margin: 0; }
+.modal { position: fixed; inset: 0; z-index: 180; background: rgba(0,0,0,.55); display: grid; place-items: center; padding: 16px; }
+.modal-in { background: var(--card); color: var(--ink); border-radius: 16px; padding: 18px; max-width: 480px; width: 100%; max-height: 90vh; overflow: auto; }
+.modal-in h2 { margin-top: 0; }

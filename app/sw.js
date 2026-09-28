@@ -1,8 +1,8 @@
 /* Guarda o app no aparelho para funcionar sem internet.
    Ao mudar qualquer arquivo do app, aumente o número da VERSAO. */
-const VERSAO = 'tier2-v4';
+const VERSAO = 'tier2-v5';
 const ARQUIVOS = [
-  './', './index.html', './style.css', './dados.js', './regras.js', './app.js',
+  './', './index.html', './style.css', './dados.js', './regras.js', './armazenamento.js', './app.js',
   './vendor/xlsx.full.min.js', './manifest.json',
   './icones/icone.svg', './icones/icone-192.png', './icones/icone-512.png', './icones/icone-maskable-512.png', './icones/apple-touch-icon.png',
 ];

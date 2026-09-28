@@ -49,13 +49,33 @@ Contexto: duas professoras aplicando a avaliação em aparelhos separados, troca
 
 ⚠️ Se duas pessoas editarem a **mesma** avaliação em aparelhos diferentes, a última salva substitui a outra por inteiro (não há mesclagem de campos). Recomendação: cada avaliação só é editada por quem a aplicou.
 
+## 4. Campos obrigatórios na identificação
+
+- Nome completo do aluno (nome e sobrenome), turma e avaliador(a) passam a ser obrigatórios; o app não avança e destaca em vermelho o que falta.
+
+## 5. Segurança e redundância dos dados
+
+Auditoria do armazenamento encontrou riscos reais de perda, agora corrigidos:
+- 🔴 **Dado corrompido** podia fazer o app começar vazio e sobrescrever tudo → agora o registro danificado vai para a quarentena e nada é sobrescrito.
+- 🔴 **App aberto em duas janelas** podia apagar o trabalho da outra → agora cada avaliação é gravada separadamente e as janelas se sincronizam.
+- 🟠 Espaço cheio, limpeza automática do navegador e apagar por engano.
+
+**4 camadas de proteção:**
+1. **Gravação dupla** (`app/armazenamento.js`): cada avaliação salva no IndexedDB (principal) e no localStorage (espelho), com conferência; ao abrir, os dois são juntados e o lado que falhou é reparado. Migração automática do formato antigo, preservando a cópia antiga.
+2. **Cópias automáticas internas**: ao trocar de módulo, ao confirmar perfil, a cada 10 min e antes de restaurar/apagar (10 mais recentes), restauráveis em Configurações.
+3. **Cópia fora do celular**: alerta na lista, lembrete ao concluir a avaliação, botão de compartilhar (Drive/e-mail/WhatsApp) e **download automático ao abrir o app após 24 h sem cópia**.
+4. **Proteções de uso**: lixeira de 30 dias, pedido de armazenamento protegido, aviso de espaço quase cheio, aviso para iPhone fora do ícone, aviso fixo se uma gravação falhar, painel "Segurança dos dados" em Configurações.
+
+Teste novo `teste/seguranca_dados.js`: 11 situações de falha simuladas, todas aprovadas.
+
 ## Como testar localmente
 
 ```bash
 node teste/aluno_ficticio.js   # confere os cálculos e a árvore de decisão
+node teste/seguranca_dados.js  # simula falhas de armazenamento (precisa do Playwright)
 ```
 
 Para testes de tela, o app é estático — basta servir a pasta `app/` (ex.: `npx http-server app`) e abrir no navegador ou simulador de celular.
 
 ---
-_Última atualização: PR #3 (código da avaliação + nº do aluno)_
+_Última atualização: segurança e redundância dos dados_
