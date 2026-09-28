@@ -28,6 +28,37 @@
       'Trabalha? Dorme bem? Algo que atrapalhe os estudos agora?',
     ],
     engajamento: ['colaborou bem', 'oscilou', 'pouco engajado'],
+    // Cada pergunta da folha dividida em partes com respostas prontas.
+    // multi: true = pode marcar mais de uma. Sempre há um campo de texto livre.
+    segmentos: [
+      [
+        { id: 'oculos', p: 'Usa óculos?', ops: ['sim', 'não', 'tem, mas não usa'] },
+        { id: 'quadro', p: 'Enxerga bem o quadro?', ops: ['sim', 'com dificuldade', 'não'] },
+        { id: 'oftalmo', p: 'Última consulta ao oftalmologista', ops: ['menos de 1 ano', '1 a 2 anos', 'mais de 2 anos', 'nunca foi', 'não sabe'] },
+      ],
+      [
+        { id: 'ouve', p: 'Ouve bem?', ops: ['sim', 'às vezes', 'não'] },
+        { id: 'repetir', p: 'Costuma pedir para repetir?', ops: ['não', 'às vezes', 'com frequência'] },
+        { id: 'otite', p: 'Teve muitas dores de ouvido / otites?', ops: ['não', 'algumas', 'muitas', 'não sabe'] },
+      ],
+      [
+        { id: 'aprendeu', p: 'Como aprendeu a ler?', ops: ['na escola, na idade esperada', 'na escola, com atraso', 'em casa / com a família', 'não lembra'] },
+        { id: 'dific', p: 'Teve dificuldade?', ops: ['não', 'um pouco', 'muita'] },
+        { id: 'repetiu', p: 'Já repetiu de ano?', ops: ['não', 'sim, 1 vez', 'sim, 2 vezes ou mais'] },
+      ],
+      [
+        { id: 'gosta', p: 'Gosta de ler?', ops: ['sim', 'mais ou menos', 'não'] },
+        { id: 'le', p: 'O que lê fora da escola?', multi: true, ops: ['celular / redes sociais', 'mensagens (WhatsApp)', 'livros', 'religião (Bíblia etc.)', 'trabalho', 'quadrinhos / mangá', 'notícias', 'jogos', 'quase nada'] },
+      ],
+      [
+        { id: 'onde', p: 'Onde sente mais dificuldade?', multi: true, ops: ['ler as palavras', 'entender', 'lembrar', 'prestar atenção', 'nenhuma'] },
+      ],
+      [
+        { id: 'trabalha', p: 'Trabalha?', ops: ['não', 'sim, às vezes / bicos', 'sim, meio período', 'sim, período integral'] },
+        { id: 'dorme', p: 'Dorme bem?', ops: ['sim', 'às vezes', 'não'] },
+        { id: 'atrapalha', p: 'Algo que atrapalhe os estudos agora?', ops: ['não', 'sim (anote abaixo)'] },
+      ],
+    ],
   };
 
   /* ---------------- MÓDULO 1 ---------------- */
@@ -114,10 +145,12 @@
       nome: 'Prosódia — Escala Multidimensional de Fluência (Zutell & Rasinski, 1991)',
       legenda: '1 = pouco desenvolvido … 4 = plenamente adequado',
       dimensoes: [
-        { id: 'expressao', nome: 'Expressão e volume', d1: 'Leitura monótona e baixa', d4: 'entonação natural, como na fala, adequada ao sentido' },
-        { id: 'fraseamento', nome: 'Fraseamento', d1: 'Palavra por palavra', d4: 'agrupa as palavras em unidades de sentido e respeita a pontuação' },
-        { id: 'fluidez', nome: 'Fluidez', d1: 'Muitas pausas, repetições e tentativas', d4: 'leitura contínua, com poucas quebras resolvidas sozinho' },
-        { id: 'ritmo', nome: 'Ritmo', d1: 'Lento e esforçado', d4: 'ritmo de conversa, constante' },
+        // d1 e d4 = âncoras da Folha de Registro; d2 e d3 = níveis intermediários da escala
+        // original de Zutell & Rasinski (1991), em tradução resumida.
+        { id: 'expressao', nome: 'Expressão e volume', d1: 'Leitura monótona e baixa', d2: 'Alguma expressão em partes do texto, mas ainda foca em “dizer as palavras”; voz ainda baixa', d3: 'Soa como fala natural na maior parte do texto, com alguns trechos sem expressão; volume adequado', d4: 'entonação natural, como na fala, adequada ao sentido' },
+        { id: 'fraseamento', nome: 'Fraseamento', d1: 'Palavra por palavra', d2: 'Lê em blocos de 2 ou 3 palavras (leitura “picada”); não marca bem o fim das frases', d3: 'Mistura: emenda frases, faz pausas no meio da frase para respirar, algum “picado”; entonação razoável', d4: 'agrupa as palavras em unidades de sentido e respeita a pontuação' },
+        { id: 'fluidez', nome: 'Fluidez', d1: 'Muitas pausas, repetições e tentativas', d2: 'Vários “pontos difíceis” com pausas longas e hesitações que atrapalham', d3: 'Quebras ocasionais por dificuldade com palavras ou frases específicas', d4: 'leitura contínua, com poucas quebras resolvidas sozinho' },
+        { id: 'ritmo', nome: 'Ritmo', d1: 'Lento e esforçado', d2: 'Moderadamente lento', d3: 'Irregular: mistura trechos rápidos e lentos', d4: 'ritmo de conversa, constante' },
       ],
       alerta: 'Abaixo de 8 sugere leitura pouco automatizada',
     },

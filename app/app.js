@@ -254,7 +254,9 @@
     D.m0.perguntas.forEach((p, i) => ps.push(() => ({
       sub: 'Pergunta ' + (i + 1) + ' de 6',
       html: '<div class="card">' + itemHead('Conversa', i + 1, 6) + '<div class="say">' + esc(p) + '</div>' +
-        campo('m0.resp.' + i, 'Anotação (opcional)', 'area', 'placeholder="resposta curta do aluno"') + '</div>',
+        D.m0.segmentos[i].map((sg) => '<label class="f">' + esc(sg.p) + (sg.multi ? ' <span class="muted">(pode marcar mais de uma)</span>' : '') + '</label>' +
+          chips('m0.op.' + sg.id, sg.ops, !!sg.multi)).join('') +
+        campo('m0.resp.' + i, 'Outra resposta / observação (opcional)', 'text', 'placeholder="escreva só se precisar" autocomplete="off"') + '</div>',
       acao: '<button class="btn pri" data-a="prox">Próximo →</button>',
     })));
     ps.push(() => ({
@@ -301,7 +303,7 @@
         const errado = r.ok === false || S.errAberto;
         let h = cronoHTML(cronoPath, L.nome) + '<div class="card">' + itemHead(it.g, i + 1, n) +
           '<div class="estimulo">' + esc(it.t) + '</div>';
-        if (errado) h += '<label class="f">Como o aluno leu? (opcional)</label><input type="text" data-f="' + p + '.leu" value="' + esc(r.leu) + '" placeholder="ex.: ' + esc(it.t) + '…" autocapitalize="off" autocomplete="off" data-enter="prox"' + (S.errAberto ? ' data-foco="1"' : '') + '>';
+        if (errado) h += '<label class="f">Como o aluno leu? <span class="muted">(opcional — toque para escrever)</span></label><input type="text" data-f="' + p + '.leu" value="' + esc(r.leu) + '" placeholder="ex.: ' + esc(it.t) + '…" autocapitalize="off" autocomplete="off" data-enter="prox">';
         if (lista === 'pseudo') h += '<div class="contador" style="margin-top:12px"><span class="muted" style="flex:1">Lexicalizações: <b>' + (a.m1.lex || 0) + '</b></span><button class="btn small lexbtn" data-a="lex" data-v="1">+1 lexicalização</button></div>';
         h += '</div>';
         let acao = '';
@@ -372,7 +374,7 @@
       const erros = new Set(m.erros || []);
       let bar = '<div class="flu-bar' + (fase === 'limite' ? ' ' : '') + '">';
       if (fase === 'pronto') bar += '<div class="relogio">60</div><div class="st">Toque em INICIAR quando disser “Já”. Depois toque nas palavras erradas.</div>';
-      else if (fase === 'lendo') bar += '<div class="relogio" data-flu>' + Math.ceil(Math.max(0, 60 - (Date.now() - m.t0) / 1000)) + '</div><div class="st">Lendo… toque nas palavras com ERRO.</div>';
+      else if (fase === 'lendo') bar += '<div class="relogio" data-flu>' + Math.ceil(Math.max(0, 60 - (Date.now() - m.t0) / 1000)) + '</div><div class="st">Lendo… toque nas palavras com ERRO.<br>Erros: <b data-nerros>' + erros.size + '</b></div>';
       else if (fase === 'limite') bar += '<div class="relogio fim">0</div><div class="st"><b style="color:var(--err)">Toque na ÚLTIMA palavra lida no 1º minuto.</b></div>';
       else bar += '<div class="relogio">' + (m.terminou ? Math.round(m.seg) + 's' : '✓') + '</div><div class="st">' + (m.terminou ? 'Terminou antes de 60 s.' : 'Última palavra marcada.') + ' Toque numa palavra para marcar/desmarcar erro.</div>';
       bar += '</div>';
@@ -398,7 +400,7 @@
           stat('Precisão', fmt(c.precisao, '%')) + '</div>' +
           (c.terminou ? campo('m2.seg', 'Tempo total, se terminou (segundos)', 'number') : '') + '</div>';
       } else if (fase !== 'pronto') {
-        res = '<div class="card" style="margin-top:12px"><span class="muted">Erros marcados até agora: <b>' + erros.size + '</b></span></div>';
+        res = '<div class="card" style="margin-top:12px"><span class="muted">Erros marcados até agora: <b data-nerros>' + erros.size + '</b></span></div>';
       }
       let acao = '';
       if (fase === 'pronto') acao = '<button class="btn ok" style="min-height:76px;font-size:24px" data-a="fluIniciar">▶ INICIAR (60 s)</button>';
@@ -409,7 +411,7 @@
     });
     D.m2.prosodia.dimensoes.forEach((d, k) => ps.push(() => {
       const v = (a.m2.pros || {})[d.id];
-      const desc = { 1: d.d1, 2: '(intermediário)', 3: '(intermediário)', 4: d.d4 };
+      const desc = { 1: d.d1, 2: d.d2, 3: d.d3, 4: d.d4 };
       return {
         sub: 'Prosódia ' + (k + 1) + '/4',
         html: '<div class="card">' + itemHead('Prosódia', k + 1, 4) + '<h2>' + esc(d.nome) + '</h2><p class="muted">' + esc(D.m2.prosodia.nome) + '. ' + esc(D.m2.prosodia.legenda) + '</p>' +
@@ -671,7 +673,7 @@
           html: '<div class="card">' + itemHead(g.nome + ' ' + (i + 1) + '/' + g.itens.length, nFolha, 28) +
             '<div class="estimulo">' + esc(w) + '</div>' +
             (g.id === 'pse' ? '<p class="muted">Pseudopalavra: sem frase. Aceite qualquer grafia que represente a pronúncia.</p>' : '<p class="muted">Diga a palavra, uma frase curta com ela e a palavra de novo.</p>') +
-            '<label class="f">Como escreveu (opcional)</label><input type="text" data-f="' + p + '.esc" value="' + esc(r.esc) + '" autocapitalize="off" autocomplete="off" data-enter="prox"' + (S.errAberto ? ' data-foco="1"' : '') + '></div>',
+            '<label class="f">Como escreveu (opcional)</label><input type="text" data-f="' + p + '.esc" value="' + esc(r.esc) + '" autocapitalize="off" autocomplete="off" data-enter="prox"></div>',
           acao: (r.ok === false ? '<button class="btn pri" data-a="prox">Próximo →</button>' : '') + botoesOkErr(p + '.ok', true),
         };
       });
@@ -934,7 +936,7 @@
     },
     perfil: (d) => { const a = av(); a.res.perfilConf = a.res.perfilConf === d.v ? null : d.v; salvar(a); render(); },
     aluno: (d) => mostrarAluno(d.v),
-    fluIniciar: () => { const a = av(); a.m2.t0 = Date.now(); a.m2.fase = 'lendo'; a.m2.terminou = false; a.m2.limite = null; a.m2.seg = null; salvar(a); render(); },
+    fluIniciar: () => { const a = av(); a.m2.erros = []; a.m2.t0 = Date.now(); a.m2.fase = 'lendo'; a.m2.terminou = false; a.m2.limite = null; a.m2.seg = null; salvar(a); render(); },
     fluTerminou: () => {
       const a = av(); const seg = Math.round(((Date.now() - a.m2.t0) / 1000) * 10) / 10;
       a.m2.seg = seg; a.m2.terminou = true; a.m2.limite = R.N_TEXTO - 1; a.m2.fase = 'revisao'; salvar(a); render();
@@ -958,6 +960,7 @@
 
   function tocarPalavra(i) {
     const a = av(); const m = a.m2;
+    if (!m.fase || m.fase === 'pronto') { toast('Toque em ▶ INICIAR antes de marcar erros.'); return; }
     if (m.fase === 'limite') {
       m.limite = i; m.fase = 'revisao'; m.terminou = false; m.seg = null;
       const ov = $('.fim-tempo'); if (ov) ov.remove();
@@ -971,6 +974,7 @@
     if (m.fase === 'lendo') {
       // não redesenha a tela inteira durante a leitura (mantém a rolagem)
       const el = $('[data-w="' + i + '"]'); if (el) el.classList.toggle('e');
+      $$('[data-nerros]').forEach((n) => { n.textContent = m.erros.length; });
       vibrar(15);
     } else render();
   }
@@ -1089,7 +1093,10 @@
     o['Encaminhamento externo'] = (res.enc || []).map((e) => (e === 'outro' && res.encOutro ? 'outro: ' + res.encOutro : e)).join(', ');
     o['Obs. Texto A'] = ((a.m3 || {}).A || {}).obs || '';
     o['Obs. Texto B'] = ((a.m3 || {}).B || {}).obs || '';
-    D.m0.perguntas.forEach((p, i) => { o['M0 P' + (i + 1)] = ((m0.resp || [])[i]) || ''; });
+    D.m0.segmentos.forEach((seg, i) => {
+      seg.forEach((sg) => { const v = (m0.op || {})[sg.id]; o['M0: ' + sg.p] = Array.isArray(v) ? v.join(', ') : (v || ''); });
+      o['M0 P' + (i + 1) + ' observação'] = ((m0.resp || [])[i]) || '';
+    });
     return o;
   }
 
@@ -1103,7 +1110,10 @@
     const okTxt = (v) => (v === true ? 'Correto' : v === false ? 'Erro' : '');
     const okPts = (v) => (v === true ? 1 : v === false ? 0 : null);
     const m0 = a.m0 || {};
-    D.m0.perguntas.forEach((p, i) => add('0', 'Conversa', i + 1, '', p, '', null, (m0.resp || [])[i]));
+    D.m0.segmentos.forEach((seg, i) => {
+      seg.forEach((sg) => { const v = (m0.op || {})[sg.id]; add('0', 'Conversa', i + 1, '', sg.p, Array.isArray(v) ? v.join(', ') : (v || ''), null, ''); });
+      if ((m0.resp || [])[i]) add('0', 'Conversa', i + 1, '', 'Observação', '', null, m0.resp[i]);
+    });
     add('0', 'Engajamento', '', '', 'Engajamento na sessão', m0.eng || '', null, '');
     add('0', 'Sensorial', '', '', 'Suspeita sensorial', m0.sens || '', null, m0.sensQual);
     const m1 = a.m1 || {};
