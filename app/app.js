@@ -9,7 +9,6 @@
   const R = window.REGRAS;
 
   /* ================= ARMAZENAMENTO ================= */
-  const K_DB = 'tier2.v1.avaliacoes';
   const K_CFG = 'tier2.v1.config';
   const K_PREF = 'tier2.v1.prefs';
   const K_POS = 'tier2.v1.posicao';
@@ -20,7 +19,9 @@
   function gravar(k, v) {
     try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { toast('Não foi possível salvar! Faça um backup agora.'); return false; }
   }
-  let DB = ler(K_DB, {});
+  // As avaliações ficam no módulo ARMAZ (armazenamento.js): IndexedDB + espelho no localStorage.
+  let DB = {};
+  let sujo = false; // houve mudança desde o último instantâneo
   let CFG = Object.assign({ pisoPCPM: 100 }, ler(K_CFG, {}));
   let PREF = Object.assign({ avaliador: '', turma: '', turmas: [], ultimaForma: null }, ler(K_PREF, {}));
 
@@ -28,12 +29,16 @@
     if (!av) return;
     av.atualizado = Date.now();
     DB[av.id] = av;
-    gravar(K_DB, DB);
+    sujo = true;
+    ARMAZ.gravarAv(av);
   }
+  // grava sem mudar a data de atualização (ex.: só a posição na tela)
+  function gravarAv(av) { if (av) ARMAZ.gravarAv(av); }
+  const ativas = () => Object.values(DB).filter((a) => !a.apagadoEm);
+  // avaliações alteradas depois da última cópia de segurança (arquivo)
+  const semCopia = () => { const u = ARMAZ.ultimoBackup(); return Object.values(DB).filter((a) => (a.atualizado || 0) > u); };
   function salvarPos() { gravar(K_POS, { tela: S.tela, avId: S.avId, mod: S.mod, i: S.i }); }
 
-  // pede ao navegador para não apagar os dados sozinho
-  try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) { /* ok */ }
 
   /* ================= UTILITÁRIOS ================= */
   const $ = (s, el) => (el || document).querySelector(s);
@@ -81,7 +86,6 @@
   /* ================= ESTADO DA TELA ================= */
   const S = { tela: 'lista', avId: null, mod: null, i: 0, errAberto: false, sensSim: false };
   const pos = ler(K_POS, null);
-  if (pos && pos.avId && DB[pos.avId]) Object.assign(S, pos);
   const av = () => DB[S.avId];
 
   const MODS = ['cab', 'm0', 'm1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7'];
@@ -189,10 +193,12 @@
       return '<button class="chip' + (on ? ' on' : '') + '" data-a="' + (multi ? 'chipMulti' : 'chip') + '" data-p="' + path + '" data-v="' + esc(val) + '">' + esc(lab) + '</button>';
     }).join('') + '</div>';
   }
-  function campo(path, rotulo, tipo, extra) {
+  function campo(path, rotulo, tipo, extra, erro) {
     const v = getPath(av(), path);
-    if (tipo === 'area') return (rotulo ? '<label class="f">' + esc(rotulo) + '</label>' : '') + '<textarea data-f="' + path + '" ' + (extra || '') + '>' + esc(v) + '</textarea>';
-    return (rotulo ? '<label class="f">' + esc(rotulo) + '</label>' : '') + '<input type="' + (tipo || 'text') + '" data-f="' + path + '"' + (tipo === 'number' ? ' inputmode="numeric" data-num="1"' : '') + ' value="' + esc(v) + '" ' + (extra || '') + '>';
+    const cls = erro ? ' class="erro"' : '';
+    const msg = erro ? '<div class="erro-msg">' + esc(erro) + '</div>' : '';
+    if (tipo === 'area') return (rotulo ? '<label class="f">' + esc(rotulo) + '</label>' : '') + '<textarea data-f="' + path + '"' + cls + ' ' + (extra || '') + '>' + esc(v) + '</textarea>' + msg;
+    return (rotulo ? '<label class="f">' + esc(rotulo) + '</label>' : '') + '<input type="' + (tipo || 'text') + '" data-f="' + path + '"' + cls + (tipo === 'number' ? ' inputmode="numeric" data-num="1"' : '') + ' value="' + esc(v) + '" ' + (extra || '') + '>' + msg;
   }
   function stat(rotulo, valor, cls) { return '<div class="stat ' + (cls || '') + '"><b>' + valor + '</b><span>' + esc(rotulo) + '</span></div>'; }
   function botaoProxModulo(mod) {
@@ -205,22 +211,39 @@
     return h;
   }
 
+  /* ---------- CABEÇALHO: validação dos campos obrigatórios ---------- */
+  // Nome completo = pelo menos duas partes com letra (evita "joão", aceita "joão da silva", "ana d'ávila").
+  function nomeCompleto(v) {
+    return String(v || '').trim().split(/\s+/).filter((p) => /\p{L}/u.test(p)).length >= 2;
+  }
+  function validarCab0(a) {
+    const erros = {};
+    if (!nomeCompleto(a.cab.nome)) erros.nome = String(a.cab.nome || '').trim() ? 'Digite o nome completo do aluno (nome e sobrenome).' : 'Obrigatório: digite o nome completo do aluno.';
+    if (!String(a.cab.turma || '').trim()) erros.turma = 'Obrigatório: informe a turma.';
+    if (!String(a.cab.avaliador || '').trim()) erros.avaliador = 'Obrigatório: informe o nome do avaliador(a).';
+    return erros;
+  }
+
   /* ---------- CABEÇALHO ---------- */
   function passosCab() {
     const a = av();
     return [
-      () => ({
-        sub: 'Aluno',
-        html: '<div class="card"><h2>Identificação</h2>' +
-          '<p class="muted" style="margin:0">Código desta avaliação: <b>' + codigo(a) + '</b></p>' +
-          campo('cab.nome', 'Nome do aluno', 'text', 'autocomplete="off"') +
-          campo('cab.matricula', 'Nº do aluno — matrícula ou nº de chamada (opcional)', 'text', 'autocomplete="off" inputmode="numeric"') +
-          '<label class="f">Turma</label>' + (PREF.turmas.length ? chips('cab.turma', PREF.turmas.slice(0, 8)) : '') +
-          '<input type="text" data-f="cab.turma" value="' + esc(a.cab.turma) + '" placeholder="ou digite a turma" style="margin-top:8px">' +
-          '<div class="row"><div>' + campo('cab.idade', 'Idade', 'number') + '</div><div>' + campo('cab.data', 'Data', 'date') + '</div></div>' +
-          campo('cab.avaliador', 'Avaliador(a)', 'text') + '</div>',
-        acao: '<button class="btn pri" data-a="prox">Próximo →</button>',
-      }),
+      () => {
+        const erros = S.cabErros || {};
+        return {
+          sub: 'Aluno',
+          html: '<div class="card"><h2>Identificação</h2>' +
+            '<p class="muted" style="margin:0">Código desta avaliação: <b>' + codigo(a) + '</b></p>' +
+            campo('cab.nome', 'Nome completo do aluno', 'text', 'autocomplete="off"' + (erros.nome ? ' data-foco="1"' : ''), erros.nome) +
+            campo('cab.matricula', 'Nº do aluno — matrícula ou nº de chamada (opcional)', 'text', 'autocomplete="off" inputmode="numeric"') +
+            '<label class="f">Turma</label>' + (PREF.turmas.length ? chips('cab.turma', PREF.turmas.slice(0, 8)) : '') +
+            '<input type="text" data-f="cab.turma" class="' + (erros.turma ? 'erro' : '') + '" value="' + esc(a.cab.turma) + '" placeholder="ou digite a turma" style="margin-top:8px">' +
+            (erros.turma ? '<div class="erro-msg">' + esc(erros.turma) + '</div>' : '') +
+            '<div class="row"><div>' + campo('cab.idade', 'Idade', 'number') + '</div><div>' + campo('cab.data', 'Data', 'date') + '</div></div>' +
+            campo('cab.avaliador', 'Avaliador(a)', 'text', '', erros.avaliador) + '</div>',
+          acao: '<button class="btn pri" data-a="proxCab0">Próximo →</button>',
+        };
+      },
       () => ({
         sub: 'Triagem',
         html: '<div class="card"><h2>Dados da triagem</h2>' +
@@ -714,8 +737,8 @@
   }
 
   function telaLista() {
-    const lista = Object.values(DB).sort((x, y) => (y.atualizado || 0) - (x.atualizado || 0));
-    let h = '<h1>Avaliações Tier 2</h1>';
+    const lista = ativas().sort((x, y) => (y.atualizado || 0) - (x.atualizado || 0));
+    let h = '<h1>Avaliações Tier 2</h1>' + alertasSeguranca();
     h += '<button class="btn pri" data-a="nova">＋ Nova avaliação</button>';
     if (!lista.length) h += '<div class="card"><p>Nenhuma avaliação ainda.</p><p class="muted">Os dados ficam só neste aparelho. Faça backup de vez em quando (botão abaixo).</p></div>';
     lista.forEach((a) => {
@@ -796,18 +819,104 @@
       '<label class="f">Encaminhamento externo</label>' + chips('res.enc', D.encaminhamentos, true) +
       ((a.res.enc || []).includes('outro') ? campo('res.encOutro', 'Outro: qual?', 'text') : '') + '</div>';
     h += '<div class="alerta">' + esc(D.lembrete) + '</div>';
+    if (a.res.perfilConf && (a.atualizado || 0) > ARMAZ.ultimoBackup()) {
+      h = '<div class="alerta seg"><b>🛡 Avaliação concluída.</b> Salve uma cópia de segurança fora do celular (Google Drive, e-mail ou WhatsApp).' +
+        '<button class="btn pri small" data-a="copiaSeguranca">🛡 Salvar cópia de segurança</button></div>' + h;
+    }
     const acao = '<button class="btn pri" data-a="exportarUm">⬇ Exportar este aluno (Excel)</button><div class="row"><button class="btn small ghost" data-a="menu">☰ Módulos</button><button class="btn small ghost" data-a="lista">Lista de alunos</button></div>';
     return { titulo: a.cab.nome || 'Resumo', sub: 'Resumo e Decisão', html: h, acao };
   }
 
+  function dataHora(t) {
+    if (!t) return 'nunca';
+    const d = new Date(t);
+    return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  }
+  function haQuanto(t) {
+    if (!t) return 'nunca';
+    const h = (Date.now() - t) / 36e5;
+    if (h < 1) return 'há menos de 1 hora';
+    if (h < 24) return 'há ' + Math.floor(h) + ' h';
+    const d = Math.floor(h / 24); return 'há ' + d + (d === 1 ? ' dia' : ' dias');
+  }
+  function mb(b) { return b == null ? '—' : (b / 1048576).toFixed(1).replace('.', ',') + ' MB'; }
+
+  // informações assíncronas da tela de Configurações
+  async function carregarInfo() {
+    const [sit, inst] = await Promise.all([ARMAZ.situacao(), ARMAZ.listarInstantaneos()]);
+    S.info = { sit, inst };
+    if (S.tela === 'config') render();
+  }
+
+  // alertas no topo da lista de alunos
+  function alertasSeguranca() {
+    let h = '';
+    const pendentes = semCopia();
+    const pend = pendentes.length;
+    const ult = ARMAZ.ultimoBackup();
+    if (pend) {
+      const desde = ult || Math.min(...pendentes.map((a) => a.criado || a.atualizado || Date.now()));
+      const velho = Date.now() - desde > 864e5;
+      h += '<div class="alerta seg' + (velho ? ' err' : '') + '">⚠ <b>' + pend + ' avaliação(ões) sem cópia de segurança</b> · última cópia: ' + haQuanto(ult) + '.' +
+        '<button class="btn pri small" data-a="copiaSeguranca">🛡 Salvar cópia agora</button></div>';
+    }
+    if (ehIOSNavegador()) h += '<div class="alerta">📱 No iPhone, abra sempre pelo <b>ícone da tela inicial</b>. Pelo Safari, o iPhone pode apagar os dados após 7 dias sem uso.</div>';
+    const est = ARMAZ.estado;
+    if (est.quarentena) h += '<div class="alerta err">Foram encontrados ' + est.quarentena + ' registro(s) danificado(s). Eles foram guardados à parte (nada foi apagado). Veja ⚙ Configurações.</div>';
+    if (S.cheio) h += '<div class="alerta err">⚠ O espaço do aparelho para o app está quase cheio (' + S.cheio + '%). Salve uma cópia de segurança e apague da Lixeira o que não precisa.</div>';
+    return h;
+  }
+  function ehIOSNavegador() {
+    const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const inst = navigator.standalone || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+    return ios && !inst;
+  }
+  // aviso que não some sozinho quando uma gravação falha
+  function avisoFixo() {
+    if (!S.falha) return '';
+    return '<div class="alerta err" style="position:relative">⛔ ' + esc(S.falha) + '<button class="btn pri small" data-a="copiaSeguranca">🛡 Salvar cópia agora</button></div>';
+  }
+
   function telaConfig() {
-    let h = '<div class="card"><h2>Configurações</h2>' +
+    const info = S.info || {};
+    const sit = info.sit || {};
+    const inst = info.inst || [];
+    const lixeira = Object.values(DB).filter((a) => a.apagadoEm).sort((x, y) => y.apagadoEm - x.apagadoEm);
+    const ok = (b) => (b === true ? '<span class="tag ok">OK</span>' : b === false ? '<span class="tag err">FALHA</span>' : '<span class="tag">…</span>');
+    let h = '<div class="card"><h2>🛡 Segurança dos dados</h2><table class="res"><colgroup><col style="width:62%"><col></colgroup>' +
+      '<tr><td>Banco principal (IndexedDB)</td><td>' + ok(sit.idbOk) + '</td></tr>' +
+      '<tr><td>Cópia espelho (localStorage)</td><td>' + ok(sit.lsOk) + '</td></tr>' +
+      '<tr><td>Armazenamento protegido contra limpeza automática</td><td>' + (sit.persistido === true ? '<span class="tag ok">SIM</span>' : sit.persistido === false ? '<span class="tag warn">NÃO</span>' : '<span class="tag">—</span>') + '</td></tr>' +
+      '<tr><td>Cópias automáticas no aparelho</td><td><b>' + inst.length + '</b></td></tr>' +
+      '<tr><td>Última cópia de segurança (arquivo)</td><td><b>' + haQuanto(ARMAZ.ultimoBackup()) + '</b></td></tr>' +
+      '<tr><td>Avaliações sem cópia de segurança</td><td><b>' + semCopia().length + '</b></td></tr>' +
+      '<tr><td>Espaço usado</td><td>' + mb(sit.uso) + (sit.cota ? ' de ' + mb(sit.cota) : '') + '</td></tr>' +
+      (sit.quarentena ? '<tr><td>Registros danificados guardados à parte</td><td><span class="tag err">' + sit.quarentena + '</span></td></tr>' : '') +
+      '</table>' +
+      (sit.persistido === false ? '<p class="muted">Para proteger: instale o app na tela inicial e use-o pelo ícone. O navegador decide sozinho quando conceder a proteção.</p>' : '') +
+      '<button class="btn pri" data-a="copiaSeguranca">🛡 Salvar cópia de segurança agora</button></div>';
+
+    h += '<div class="card"><h2>Cópias automáticas</h2><p class="muted">O app guarda sozinho uma cópia completa ao trocar de módulo, ao confirmar um perfil e a cada 10 minutos de uso (as ' + 10 + ' mais recentes). Restaurar não apaga nada: só traz avaliações que faltam ou versões mais novas.</p>';
+    if (!inst.length) h += '<p class="muted">Nenhuma cópia ainda.</p>';
+    inst.forEach((x) => { h += '<div class="linha-cfg"><span>' + dataHora(x.t) + ' · ' + x.n + ' avaliação(ões)' + (x.motivo ? '<br><small class="muted">' + esc(x.motivo) + '</small>' : '') + '</span><button class="btn small" data-a="restaurarInst" data-v="' + x.t + '">Restaurar</button></div>'; });
+    h += '</div>';
+
+    h += '<div class="card"><h2>🗑 Lixeira</h2><p class="muted">Avaliações apagadas ficam aqui por ' + ARMAZ.DIAS_LIXEIRA + ' dias e depois são removidas de vez.</p>';
+    if (!lixeira.length) h += '<p class="muted">A lixeira está vazia.</p>';
+    lixeira.forEach((a) => {
+      const resta = Math.max(0, ARMAZ.DIAS_LIXEIRA - Math.floor((Date.now() - a.apagadoEm) / 864e5));
+      h += '<div class="linha-cfg"><span><b>' + esc(a.cab.nome || '(sem nome)') + '</b><br><small class="muted">' + esc(a.cab.turma || '') + ' · Cód. ' + codigo(a) + ' · some em ' + resta + ' dia(s)</small></span>' +
+        '<span class="row" style="flex:none;gap:6px"><button class="btn small" data-a="recuperar" data-v="' + a.id + '">Recuperar</button><button class="btn small ghost" style="color:var(--err)" data-a="apagarDeVez" data-v="' + a.id + '">Apagar</button></span></div>';
+    });
+    h += '</div>';
+
+    h += '<div class="card"><h2>Configurações</h2>' +
       '<label class="f">Piso de PCPM (fluência)</label><input type="number" inputmode="numeric" data-cfg="pisoPCPM" value="' + esc(CFG.pisoPCPM) + '">' +
       '<p class="muted">Padrão: 100 (piso provisório do manual). Troque pelo menor valor do seu grupo de referência local assim que tiver.</p></div>' +
-      '<div class="card"><h2>Privacidade</h2><p>Os dados ficam <b>somente neste aparelho</b>, no armazenamento do navegador. Nada é enviado para a internet.</p>' +
-      '<p class="muted">Se limpar os dados do navegador ou trocar de celular, as avaliações se perdem. Use <b>Backup</b> regularmente e guarde o arquivo em local seguro (são dados de menores — LGPD).</p>' +
-      '<p class="muted">Avaliações salvas: ' + Object.keys(DB).length + '</p></div>';
-    return { titulo: 'Configurações', sub: '', html: h, acao: '<button class="btn pri" data-a="lista">← Voltar</button>' };
+      '<div class="card"><h2>Privacidade</h2><p>Os dados ficam <b>somente neste aparelho</b>. Nada é enviado para a internet, a não ser que você mesmo envie a cópia de segurança para o Drive/e-mail.</p>' +
+      '<p class="muted">São dados de menores (LGPD): guarde as cópias em local privado.</p>' +
+      '<p class="muted">Avaliações salvas: ' + ativas().length + (lixeira.length ? ' (+ ' + lixeira.length + ' na lixeira)' : '') + '</p></div>';
+    return { titulo: 'Configurações', sub: 'Segurança dos dados, lixeira e ajustes', html: h, acao: '<button class="btn pri" data-a="lista">← Voltar</button>' };
   }
 
   /* ================= RENDER ================= */
@@ -815,10 +924,10 @@
   function render() {
     let t;
     let progresso = null;
-    if (S.tela === 'lista' || !av()) { S.tela = 'lista'; t = telaLista(); }
+    if (S.tela === 'config') t = telaConfig();
+    else if (S.tela === 'lista' || !av()) { S.tela = 'lista'; t = telaLista(); }
     else if (S.tela === 'menu') t = telaMenu();
     else if (S.tela === 'resumo') t = telaResumo();
-    else if (S.tela === 'config') t = telaConfig();
     else {
       const ps = PASSOS[S.mod]();
       if (S.i >= ps.length) S.i = ps.length - 1;
@@ -827,7 +936,7 @@
       const nomeMod = S.mod === 'cab' ? 'Identificação' : 'Módulo ' + NOMES[S.mod][0] + ' · ' + NOMES[S.mod][1];
       t = { titulo: nomeMod, sub: (av().cab.nome ? av().cab.nome + ' · ' : '') + (p.sub || ''), html: p.html, acao: p.acao };
       progresso = ps.length > 1 ? Math.round((S.i / (ps.length - 1)) * 100) : 100;
-      av().pos = av().pos || {}; av().pos[S.mod] = S.i; gravar(K_DB, DB);
+      av().pos = av().pos || {}; av().pos[S.mod] = S.i; gravarAv(av());
     }
     const chave = S.tela + '|' + S.mod + '|' + S.i + '|' + S.avId;
     $('#top').innerHTML = '<div class="top-row">' +
@@ -835,7 +944,7 @@
       '<div class="top-title">' + esc(t.titulo) + (t.sub ? '<small>' + esc(t.sub) + '</small>' : '') + '</div>' +
       (S.tela === 'passo' ? '<button class="icon-btn" data-a="menu" aria-label="Menu dos módulos">☰</button>' : '') +
       '</div>' + (progresso != null ? '<div class="prog"><div style="width:' + progresso + '%"></div></div>' : '');
-    $('#main').innerHTML = t.html;
+    $('#main').innerHTML = avisoFixo() + t.html;
     $('#acao').innerHTML = '<div class="acao-in">' + (t.acao || '') + '</div>';
     $('#acao').classList.toggle('hidden', !t.acao);
     if (chave !== ultimaChave) { window.scrollTo(0, 0); ultimaChave = chave; }
@@ -846,6 +955,7 @@
 
   /* ================= NAVEGAÇÃO ================= */
   function abrirMod(m) {
+    if (sujo) { sujo = false; ARMAZ.instantaneo(DB, 'troca de módulo'); }
     const a = av();
     S.tela = 'passo'; S.mod = m; S.errAberto = false;
     S.i = (a.pos && a.pos[m]) || 0;
@@ -864,6 +974,7 @@
   }
 
   function novaAvaliacao() {
+    S.cabErros = null;
     const a = {
       id: novoId(), criado: Date.now(), atualizado: Date.now(),
       cab: { nome: '', turma: PREF.turma || '', idade: '', data: hoje(), avaliador: PREF.avaliador || '', dominios: [], forma: null },
@@ -893,14 +1004,38 @@
     lista: () => { S.tela = 'lista'; render(); },
     menu: () => { S.tela = 'menu'; S.errAberto = false; render(); },
     resumo: () => { S.tela = 'resumo'; render(); },
-    config: () => { S.tela = 'config'; render(); },
+    config: () => { S.tela = 'config'; render(); carregarInfo(); },
+    recuperar: (d) => { const a = DB[d.v]; if (!a) return; delete a.apagadoEm; salvar(a); toast('Avaliação recuperada.'); render(); carregarInfo(); },
+    apagarDeVez: async (d) => {
+      const a = DB[d.v]; if (!a) return;
+      if (!confirm('Apagar DEFINITIVAMENTE a avaliação de "' + (a.cab.nome || 'sem nome') + '"? Não será possível recuperar (só por uma cópia de segurança antiga).')) return;
+      await ARMAZ.instantaneo(DB, 'antes de apagar definitivamente');
+      await ARMAZ.removerDefinitivo(a.id); delete DB[a.id]; render(); carregarInfo();
+    },
+    restaurarInst: async (d) => {
+      const r = (S.info && S.info.inst || []).find((x) => String(x.t) === d.v); if (!r) return;
+      if (!confirm('Restaurar a cópia automática de ' + dataHora(r.t) + '? Nada será apagado: só entram avaliações que faltam ou versões mais novas.')) return;
+      mesclar(JSON.parse(r.dados), 'Cópia automática restaurada');
+    },
+    copiaSeguranca: () => compartilharBackup(),
+    copiaBaixar: () => { backup(); fecharModal(); },
+    copiaConfirmar: () => { ARMAZ.marcarBackup(); fecharModal(); render(); toast('Cópia de segurança registrada.'); },
+    fecharModal: () => fecharModal(),
+    recarregarDados: () => location.reload(),
     voltar,
     prox,
+    proxCab0: () => {
+      const a = av();
+      const erros = validarCab0(a);
+      if (Object.keys(erros).length) { S.cabErros = erros; toast('Corrija os campos destacados.'); render(); return; }
+      S.cabErros = null;
+      prox();
+    },
     abrirMod: (d) => abrirMod(d.v),
     apagar: () => {
       const a = av();
-      if (confirm('Apagar a avaliação de "' + (a.cab.nome || 'sem nome') + '"? Isso não pode ser desfeito.')) {
-        delete DB[a.id]; gravar(K_DB, DB); S.avId = null; S.tela = 'lista'; render(); toast('Avaliação apagada.');
+      if (confirm('Mover a avaliação de "' + (a.cab.nome || 'sem nome') + '" para a Lixeira? Você pode recuperá-la em até ' + ARMAZ.DIAS_LIXEIRA + ' dias (⚙ Configurações → Lixeira).')) {
+        a.apagadoEm = Date.now(); salvar(a); S.avId = null; S.tela = 'lista'; render(); toast('Avaliação movida para a Lixeira.');
       }
     },
     okErr: (d, b) => {
@@ -919,7 +1054,7 @@
     setAvanca: (d) => { const a = av(); setPath(a, d.p, d.v); salvar(a); prox(); },
     toggle: (d) => { const a = av(); setPath(a, d.p, !getPath(a, d.p)); salvar(a); render(); },
     toggleR: (d) => { const a = av(); setPath(a, d.p, !getPath(a, d.p)); salvar(a); render(); },
-    chip: (d) => { const a = av(); setPath(a, d.p, getPath(a, d.p) === d.v ? null : d.v); salvar(a); if (d.p === 'cab.turma') lembrarPrefs(); render(); },
+    chip: (d) => { const a = av(); setPath(a, d.p, getPath(a, d.p) === d.v ? null : d.v); salvar(a); if (d.p === 'cab.turma') { lembrarPrefs(); if (S.cabErros) delete S.cabErros.turma; } render(); },
     chipMulti: (d) => {
       const a = av(); let v = getPath(a, d.p) || [];
       v = v.includes(d.v) ? v.filter((x) => x !== d.v) : v.concat([d.v]);
@@ -940,7 +1075,7 @@
       const a = av(); a[d.p] = a[d.p] || {}; a[d.p].ativo = d.v === '1'; salvar(a);
       if (d.v === '1') { S.i = 1; render(); } else { S.tela = 'menu'; render(); }
     },
-    perfil: (d) => { const a = av(); a.res.perfilConf = a.res.perfilConf === d.v ? null : d.v; salvar(a); render(); },
+    perfil: (d) => { const a = av(); a.res.perfilConf = a.res.perfilConf === d.v ? null : d.v; salvar(a); render(); if (a.res.perfilConf) ARMAZ.instantaneo(DB, 'perfil confirmado'); },
     aluno: (d) => mostrarAluno(d.v),
     fluIniciar: () => { const a = av(); a.m2.erros = []; a.m2.t0 = Date.now(); a.m2.fase = 'lendo'; a.m2.terminou = false; a.m2.limite = null; a.m2.seg = null; salvar(a); render(); },
     fluTerminou: () => {
@@ -949,7 +1084,7 @@
     },
     fluRemarcar: () => { const a = av(); a.m2.fase = 'limite'; a.m2.terminou = false; a.m2.seg = null; salvar(a); render(); },
     fluReiniciar: () => { if (confirm('Apagar os erros marcados e reiniciar o minuto?')) { const a = av(); a.m2 = { pros: a.m2.pros }; salvar(a); render(); } },
-    exportarTodos: () => exportar(Object.values(DB)),
+    exportarTodos: () => exportar(ativas()),
     exportarUm: () => exportar([av()]),
     backup,
     restaurar: () => $('#arquivo').click(),
@@ -1001,6 +1136,11 @@
       let v = el.value;
       if (el.dataset.num) v = v === '' ? null : Number(String(v).replace(',', '.'));
       setPath(a, el.dataset.f, v); salvar(a);
+      if (S.cabErros && ['cab.nome', 'cab.turma', 'cab.avaliador'].includes(el.dataset.f)) {
+        el.classList.remove('erro');
+        const m = el.nextElementSibling; if (m && m.classList.contains('erro-msg')) m.remove();
+        delete S.cabErros[el.dataset.f.replace('cab.', '')];
+      }
     } else if (el.dataset.cfg) {
       CFG[el.dataset.cfg] = el.value === '' ? 100 : Number(el.value); gravar(K_CFG, CFG);
     }
@@ -1192,50 +1332,138 @@
     const l = document.createElement('a'); l.href = url; l.download = nome; document.body.appendChild(l); l.click();
     setTimeout(() => { URL.revokeObjectURL(url); l.remove(); }, 1000);
   }
+  function dadosBackup() {
+    return { app: 'tier2-digital', versao: 2, exportado: new Date().toISOString(), config: CFG, avaliacoes: Object.values(DB) };
+  }
+  const nomeBackup = () => 'Tier2_backup_' + hoje() + '_' + new Date().toTimeString().slice(0, 5).replace(':', 'h') + '.json';
   function backup() {
-    const dados = { app: 'tier2-digital', versao: 1, exportado: new Date().toISOString(), config: CFG, avaliacoes: Object.values(DB) };
-    baixar('Tier2_backup_' + hoje() + '.json', JSON.stringify(dados), 'application/json');
-    toast('Backup salvo (' + dados.avaliacoes.length + ' avaliações). Guarde o arquivo em local seguro.');
+    const dados = dadosBackup();
+    baixar(nomeBackup(), JSON.stringify(dados), 'application/json');
+    ARMAZ.marcarBackup();
+    toast('Cópia de segurança salva em Downloads (' + dados.avaliacoes.length + ' avaliações). Envie para o Drive ou e-mail para proteger contra perda do celular.');
+    render();
+  }
+  // envia a cópia pelo menu de compartilhar do celular (Drive, e-mail, WhatsApp...)
+  async function compartilharBackup() {
+    const texto = JSON.stringify(dadosBackup());
+    const nome = nomeBackup();
+    try {
+      const arq = new File([texto], nome, { type: 'application/json' });
+      if (navigator.canShare && navigator.canShare({ files: [arq] })) {
+        await navigator.share({ files: [arq], title: 'Cópia de segurança Tier 2', text: 'Cópia de segurança das avaliações Tier 2 (' + hoje() + ').' });
+        ARMAZ.marcarBackup(); fecharModal(); render();
+        toast('Cópia de segurança enviada.');
+        return;
+      }
+    } catch (e) {
+      if (e && e.name === 'AbortError') { toast('Envio cancelado. A cópia ainda não foi feita.'); return; }
+    }
+    backup(); // celular sem "compartilhar": baixa o arquivo
+    fecharModal();
+  }
+  // junta uma lista de avaliações ao banco: entra o que falta ou é mais novo; nada é apagado
+  function mesclar(lista, titulo) {
+    let novos = 0, atualizados = 0, mantidos = 0;
+    lista.forEach((a) => {
+      if (!a || !a.id || !a.cab) return;
+      const atual = DB[a.id];
+      if (!atual) { DB[a.id] = a; ARMAZ.gravarAv(a); novos++; }
+      else if ((a.atualizado || 0) > (atual.atualizado || 0)) { DB[a.id] = a; ARMAZ.gravarAv(a); atualizados++; }
+      else mantidos++;
+    });
+    S.tela = 'lista'; render();
+    toast((titulo || 'Backup restaurado') + ': ' + novos + ' avaliação(ões) adicionada(s), ' + atualizados + ' atualizada(s), ' + mantidos + ' sem mudança (você já tinha a versão igual ou mais nova).');
   }
   function restaurarArquivo(file) {
     const fr = new FileReader();
-    fr.onload = () => {
+    fr.onload = async () => {
+      let lista;
       try {
         const j = JSON.parse(fr.result);
-        const lista = Array.isArray(j) ? j : j.avaliacoes;
+        lista = Array.isArray(j) ? j : j.avaliacoes;
         if (!Array.isArray(lista)) throw new Error('formato');
-        let novos = 0, atualizados = 0, mantidos = 0;
-        lista.forEach((a) => {
-          if (!a || !a.id || !a.cab) return;
-          const atual = DB[a.id];
-          if (!atual) { DB[a.id] = a; novos++; }
-          else if ((a.atualizado || 0) > (atual.atualizado || 0)) { DB[a.id] = a; atualizados++; }
-          else mantidos++;
-        });
-        gravar(K_DB, DB);
-        S.tela = 'lista'; render();
-        toast('Backup restaurado: ' + novos + ' avaliação(ões) adicionada(s), ' + atualizados + ' atualizada(s), ' + mantidos + ' sem mudança (você já tinha a versão igual ou mais nova).');
-      } catch (e) { toast('Arquivo de backup inválido.'); }
+      } catch (e) { toast('Arquivo de backup inválido.'); return; }
+      await ARMAZ.instantaneo(DB, 'antes de restaurar backup');
+      mesclar(lista, 'Backup restaurado');
     };
     fr.readAsText(file);
   }
 
+  /* ---------- tela de cópia de segurança (abre sozinha após 24 h sem cópia) ---------- */
+  function mostrarModal(html) {
+    let m = $('#modal');
+    if (!m) { m = document.createElement('div'); m.id = 'modal'; m.className = 'modal'; document.body.appendChild(m); }
+    m.innerHTML = '<div class="modal-in">' + html + '</div>';
+  }
+  function fecharModal() { const m = $('#modal'); if (m) m.remove(); }
+  async function copiaAutomatica() {
+    const ult = ARMAZ.ultimoBackup();
+    const pendentes = semCopia();
+    const pend = pendentes.length;
+    // prazo de 24 h: desde a última cópia ou, se nunca houve, desde a avaliação mais antiga sem cópia
+    const desde = ult || Math.min(...pendentes.map((a) => a.criado || a.atualizado || Date.now()));
+    if (!pend || Date.now() - desde < 864e5) return;                   // em dia
+    if (Date.now() - ARMAZ.ultimaTentativaAuto() < 864e5) return;      // no máximo uma vez por dia
+    ARMAZ.marcarTentativaAuto();
+    await ARMAZ.instantaneo(DB, 'cópia automática diária');
+    try { baixar(nomeBackup(), JSON.stringify(dadosBackup()), 'application/json'); } catch (e) { /* o botão abaixo resolve */ }
+    mostrarModal('<h2>🛡 Cópia de segurança automática</h2>' +
+      '<p>' + (ult ? 'Faz mais de 24 horas desde a última cópia' : 'Você ainda não fez nenhuma cópia de segurança') + ' e há <b>' + pend + ' avaliação(ões)</b> novas ou alteradas.</p>' +
+      '<p>O app tentou salvar a cópia na pasta <b>Downloads</b> deste celular. Para proteger contra perda, roubo ou quebra do celular, <b>envie a cópia para o Google Drive ou para o seu e-mail</b>:</p>' +
+      '<button class="btn pri" data-a="copiaSeguranca">📤 Enviar cópia (Drive, e-mail, WhatsApp)</button>' +
+      '<button class="btn" data-a="copiaBaixar">⬇ Não baixou? Baixar de novo</button>' +
+      '<button class="btn ghost" data-a="copiaConfirmar">✓ Já guardei a cópia</button>' +
+      '<button class="btn ghost small" data-a="fecharModal">Agora não</button>');
+  }
+
   /* ================= INÍCIO ================= */
-  function iniciar() {
+  async function iniciar() {
     document.body.innerHTML =
       '<header class="top" id="top"></header><main id="main"></main><div class="acao" id="acao"></div>' +
       '<div class="aluno-view hidden" id="alunoView"></div><button class="aluno-sair hidden" id="alunoSair">✕ voltar ao avaliador</button>' +
       '<input type="file" id="arquivo" accept=".json,application/json" class="hidden">';
     $('#alunoSair').onclick = fecharAluno;
     $('#arquivo').onchange = (e) => { if (e.target.files[0]) restaurarArquivo(e.target.files[0]); e.target.value = ''; };
+    $('#main').innerHTML = '<div class="card"><p>Carregando avaliações…</p></div>';
+    ARMAZ.aoFalhar = (msg) => { S.falha = msg; render(); };
+    try { DB = await ARMAZ.iniciar(); } catch (e) { DB = {}; S.falha = 'Erro ao carregar os dados. Nada foi apagado. Feche e abra o app de novo.'; }
+    await ARMAZ.recuperarMeta();
+    if (pos && pos.avId && DB[pos.avId] && !DB[pos.avId].apagadoEm) Object.assign(S, pos);
     render();
+    const est = ARMAZ.estado;
+    if (est.reparados) toast('Proteção: ' + est.reparados + ' avaliação(ões) recuperada(s) da cópia espelho.');
+    ARMAZ.pedirPersistencia();
+    // espaço quase cheio
+    ARMAZ.situacao().then((sit) => { if (sit.uso && sit.cota && sit.uso / sit.cota > 0.8) { S.cheio = Math.round((sit.uso / sit.cota) * 100); render(); } });
+    // cópia automática ao abrir (após 24 h sem cópia)
+    copiaAutomatica();
+    // instantâneo a cada 10 minutos, se houve mudança
+    setInterval(() => { if (sujo) { sujo = false; ARMAZ.instantaneo(DB, 'automática (10 min)'); } }, 10 * 60 * 1000);
+    // ao sair do app (trocar de app, bloquear tela): grava de novo a avaliação aberta
+    const garantir = () => { if (av()) ARMAZ.gravarAv(av()); if (sujo) { sujo = false; ARMAZ.instantaneo(DB, 'ao sair do app'); } };
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') garantir(); });
+    window.addEventListener('pagehide', garantir);
+    // app aberto em outra aba/janela: mantém esta cópia atualizada
+    window.addEventListener('storage', (e) => {
+      if (!e.key || e.key.indexOf(ARMAZ.PREF_AV) !== 0) return;
+      const id = e.key.slice(ARMAZ.PREF_AV.length);
+      if (e.newValue === null) return; // nunca apaga por causa de outra aba
+      try {
+        const n = JSON.parse(e.newValue);
+        if (!DB[id] || (n.atualizado || 0) > (DB[id].atualizado || 0)) {
+          DB[id] = n;
+          if (S.avId === id && S.tela !== 'lista') toast('Esta avaliação foi atualizada em outra janela do app.');
+          render();
+        }
+      } catch (err) { /* ignora */ }
+    });
     if ('serviceWorker' in navigator && location.protocol !== 'file:') {
       navigator.serviceWorker.register('sw.js').catch(() => { /* ok */ });
     }
   }
 
   // exposto para testes automatizados
-  window.TIER2 = { linhaResumo, linhasItens, calcular: (a) => R.calcular(a, CFG), DB: () => DB };
+  window.TIER2 = { linhaResumo, linhasItens, calcular: (a) => R.calcular(a, CFG), DB: () => DB, salvar: (a) => salvar(a) };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
 })();

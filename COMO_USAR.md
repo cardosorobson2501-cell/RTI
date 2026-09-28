@@ -61,14 +61,33 @@ O arquivo (ex.: `Tier2_2026-09-28.xlsx`) vai para a pasta **Downloads** e tem du
 - **Resumo** — uma linha por aluno, com todos os totais, porcentagens, critérios alterados e perfis.
 - **Itens** — cada resposta, item por item (palavra, acerto/erro, como leu, nota 0/1/2…).
 
-## 5. Backup (não perder dados)
+## 5. Seus dados estão seguros? (backup e proteções)
 
-- **💾 Backup** (na lista de alunos) baixa um arquivo `Tier2_backup_DATA.json` com **todas** as avaliações.
-  Faça isso ao fim de cada dia de aplicação e guarde o arquivo em local seguro (são dados de menores — LGPD).
-- Para trocar de celular: instale o app no novo aparelho e toque em **⤒ Restaurar backup** → escolha o arquivo.
-  Avaliações que já existirem não são duplicadas.
+O app tem **4 camadas de proteção**. As três primeiras funcionam sozinhas; a quarta precisa de um toque seu.
 
-> Atenção: "limpar dados do navegador" apaga as avaliações. Por isso o backup é importante.
+| Proteção | Contra o quê | Precisa fazer algo? |
+|---|---|---|
+| **Gravação dupla**: cada toque é salvo em dois lugares do celular (banco principal + espelho) | falta de internet, celular reiniciado, app fechado de repente, um dos lados corromper | Não |
+| **Cópias automáticas** no próprio celular (ao trocar de módulo, ao confirmar o perfil e a cada 10 min) | erro ao restaurar, avaliação perdida | Não — para restaurar: ⚙ Configurações → Cópias automáticas |
+| **Lixeira de 30 dias** | apagar por engano | Não — para recuperar: ⚙ Configurações → Lixeira |
+| **Cópia de segurança fora do celular** (arquivo) | perder, quebrar ou ser roubado o celular; limpar os dados do navegador; desinstalar | **Sim, um toque** |
+
+### A cópia de segurança (o que depende de você)
+- Na lista de alunos aparece o aviso **"⚠ N avaliações sem cópia de segurança"** até você salvar.
+- Ao **confirmar o perfil** no Resumo, aparece o botão **🛡 Salvar cópia de segurança**.
+- Se passar **mais de 24 h sem cópia**, ao abrir o app ele **baixa a cópia sozinho** na pasta Downloads e mostra uma tela pedindo para enviar ao Drive/e-mail.
+- O botão **🛡 Salvar cópia** abre o menu de compartilhar do celular: escolha **Google Drive** (recomendado) ou **seu e-mail**. Assim a cópia fica fora do aparelho.
+
+**Rotina recomendada:** ao fim de cada dia de aplicação, toque em **🛡 Salvar cópia agora** e envie para o seu Google Drive.
+
+### Trocar de celular / juntar com outra avaliadora
+- No celular novo, instale o app e toque em **⤒ Restaurar backup** → escolha o arquivo. Nada é duplicado: vale sempre a versão mais nova de cada avaliação.
+
+### Conferir a saúde dos dados
+**⚙ Configurações → 🛡 Segurança dos dados** mostra: banco principal e espelho (OK/FALHA), se o armazenamento está protegido contra limpeza automática, quantas cópias automáticas existem, quando foi a última cópia de segurança e o espaço usado.
+
+> **iPhone:** use sempre pelo **ícone da tela inicial**. Aberto pelo Safari, o iPhone pode apagar os dados após 7 dias sem uso.
+> Se algum dia aparecer um aviso vermelho fixo no topo ("Não foi possível salvar…"), toque em **🛡 Salvar cópia agora** imediatamente.
 
 ## 6. Configurações
 
@@ -79,5 +98,7 @@ O arquivo (ex.: `Tier2_2026-09-28.xlsx`) vai para a pasta **Downloads** e tem du
 
 - `app/dados.js` — todos os itens, textos, gabaritos e rubricas (copiados da Folha de Registro, do Manual e do Caderno).
 - `app/regras.js` — pontos de corte (`CORTES`) e a árvore de decisão do manual.
+- `app/armazenamento.js` — gravação dupla (IndexedDB + espelho localStorage), carga segura, quarentena, cópias automáticas e lixeira.
 - `teste/aluno_ficticio.js` — confere os cálculos: `node teste/aluno_ficticio.js`.
+- `teste/seguranca_dados.js` — simula 11 falhas (dado corrompido, banco apagado, duas janelas, espaço cheio, sem internet…): `node teste/seguranca_dados.js`.
 - Ao alterar arquivos do app, aumente `VERSAO` em `app/sw.js` para os celulares baixarem a versão nova.
