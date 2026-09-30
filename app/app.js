@@ -119,7 +119,7 @@
     const a = av(); const T = getPath(a, path); if (!T || !T.t0) return;
     T.acc = segundos(T); T.t0 = null; setPath(a, path, T);
     // grava o tempo no campo correspondente
-    const destino = { 'm1.palT': 'm1.palTempo', 'm1.pseT': 'm1.pseTempo', 'm6.nl.T': 'm6.nl.tempo', 'm6.nn.T': 'm6.nn.tempo' }[path];
+    const destino = { 'm1.palT': 'm1.palTempo', 'm1.pseT': 'm1.pseTempo', 'm6.nl.T': 'm6.nl.tempo', 'm6.nn.T': 'm6.nn.tempo', 'm3.A.T': 'm3.A.tempoLeitura', 'm3.B.T': 'm3.B.tempoLeitura' }[path];
     if (destino) setPath(a, destino, Math.round(T.acc));
     salvar(a);
   }
@@ -489,6 +489,7 @@
       ps.push(() => {
         const o = intro({
           titulo: T.nome + ': “' + T.titulo + '” — ' + rot, tempo: 'Forma ' + forma,
+          acaoComecar: modo === 'lido' ? 'recolherTexto' : null, p: modo === 'lido' ? base + '.T' : null,
           roteiros: [modo === 'lido' ? D.m3.roteiroLido : D.m3.roteiroOuvido],
           regras: modo === 'lido' ? D.m3.regrasLido : D.m3.regrasOuvido,
           extra: modo === 'ouvido'
@@ -496,6 +497,8 @@
             : '<details class="texto-ref"><summary>Ver o texto (só para você)</summary>' + textoHTML + '</details>',
           aluno: modo === 'lido' ? 'txt' + k : null, botao: 'Texto recolhido → Reconto',
         });
+        // cronômetro da leitura silenciosa: liga ao mostrar o texto, para ao recolher
+        if (modo === 'lido') o.html = cronoHTML(base + '.T', 'Leitura silenciosa') + o.html;
         return Object.assign({ sub: T.nome + ' · ' + (modo === 'lido' ? 'lido' : 'ouvido') }, o);
       });
       ps.push(() => ({
@@ -521,6 +524,7 @@
             stat('Compreensão = (reconto + perguntas) ÷ 22', fmt(c.pct, '%'), c.pct != null && c.pct < 60 ? 'alt' : 'destaque') +
             stat('Conta como', modo === 'lido' ? 'Compreensão LEITORA' : 'Compreensão ORAL') + '</div>' +
             (c.pergResp < 6 ? '<div class="alerta">Faltam ' + (6 - c.pergResp) + ' perguntas sem nota.</div>' : '') +
+            (modo === 'lido' ? campo(base + '.tempoLeitura', 'Tempo da leitura silenciosa (segundos)', 'number') : '') +
             campo(base + '.obs', D.m3.observacoes, 'area') + '</div>',
           acao: '<button class="btn pri" data-a="prox">' + (modo === 'lido' ? 'Próximo: texto OUVIDO →' : 'Concluir módulo →') + '</button>',
         };
@@ -1070,13 +1074,18 @@
     cronoParar: (d) => { cronoParar(d.p); render(); },
     cronoZerar: (d) => { const a = av(); setPath(a, d.p, { t0: null, acc: 0 }); salvar(a); render(); },
     comecaCrono: (d) => { cronoIniciar(d.p); prox(); },
+    recolherTexto: (d) => { cronoParar(d.p); prox(); },
     recontoFeito: (d) => { const a = av(); setPath(a, d.p + '.recontoFeito', true); salvar(a); prox(); },
     ativar: (d) => {
       const a = av(); a[d.p] = a[d.p] || {}; a[d.p].ativo = d.v === '1'; salvar(a);
       if (d.v === '1') { S.i = 1; render(); } else { S.tela = 'menu'; render(); }
     },
     perfil: (d) => { const a = av(); a.res.perfilConf = a.res.perfilConf === d.v ? null : d.v; salvar(a); render(); if (a.res.perfilConf) ARMAZ.instantaneo(DB, 'perfil confirmado'); },
-    aluno: (d) => mostrarAluno(d.v),
+    aluno: (d) => {
+      // texto lido em silêncio: o cronômetro liga ao mostrar o texto ao aluno
+      if (d.v === 'txtA' || d.v === 'txtB') { cronoIniciar('m3.' + d.v.slice(3) + '.T'); render(); }
+      mostrarAluno(d.v);
+    },
     fluIniciar: () => { const a = av(); a.m2.erros = []; a.m2.t0 = Date.now(); a.m2.fase = 'lendo'; a.m2.terminou = false; a.m2.limite = null; a.m2.seg = null; salvar(a); render(); },
     fluTerminou: () => {
       const a = av(); const seg = Math.round(((Date.now() - a.m2.t0) / 1000) * 10) / 10;
@@ -1186,7 +1195,13 @@
     $('#alunoSair').classList.remove('hidden');
     window.scrollTo(0, 0);
   }
-  function fecharAluno() { $('#alunoView').classList.add('hidden'); $('#alunoSair').classList.add('hidden'); }
+  function fecharAluno() {
+    $('#alunoView').classList.add('hidden'); $('#alunoSair').classList.add('hidden');
+    // ao voltar do texto lido em silêncio, o cronômetro para sozinho
+    const a = av(); if (!a || !a.m3) return;
+    const parou = ['A', 'B'].filter((k) => a.m3[k] && a.m3[k].T && a.m3[k].T.t0);
+    if (parou.length) { parou.forEach((k) => cronoParar('m3.' + k + '.T')); render(); toast('⏱ Leitura silenciosa: ' + Math.round(a.m3[parou[0]].T.acc) + ' s'); }
+  }
 
   /* ================= EXCEL ================= */
   const simNao = (b) => (b == null ? '' : b ? 'Sim' : 'Não');
@@ -1216,6 +1231,7 @@
       'Prosódia total (/16)': num(m2.prosodia),
       'Texto A reconto (/10)': m3.A.reconto, 'Texto A perguntas (/12)': num(m3.A.perguntas), 'Texto A %': num(m3.A.pct),
       'Texto B reconto (/10)': m3.B.reconto, 'Texto B perguntas (/12)': num(m3.B.perguntas), 'Texto B %': num(m3.B.pct),
+      'Tempo leitura silenciosa (s)': num(m3.lido ? ((a.m3 || {})[m3.lido] || {}).tempoLeitura : null),
       'Compreensão LEITORA %': num(m3.leitora), 'Compreensão ORAL %': num(m3.oral), 'Diferença oral − leitora (p.p.)': num(m3.diferenca),
       'Anáfora (/6)': num(c.an.total), 'Anáfora %': num(c.an.pct), 'Conectivos (/8)': num(c.con.total), 'Conectivos %': num(c.con.pct),
       'Vocab. oral (/24)': num(c.vo.total), 'Vocab. oral %': num(c.vo.pct), 'Vocab. comando (/20)': num(c.vc.total), 'Vocab. comando %': num(c.vc.pct),
@@ -1277,6 +1293,7 @@
       const modo = tx.lido === k ? 'LIDO' : tx.ouvido === k ? 'OUVIDO' : '';
       T.ideias.forEach((idea, i) => add('3', T.nome + ' (' + modo + ') — reconto', i + 1, '', idea, (t.ideias || [])[i] ? 'Recontou' : 'Não', (t.ideias || [])[i] ? 1 : 0, ''));
       T.perguntas.forEach((q, i) => add('3', T.nome + ' (' + modo + ') — perguntas', i + 1, q.tipo, q.p, '', ((t.perg || [])[i]) ?? null, ''));
+      if (t.tempoLeitura != null && t.tempoLeitura !== '') add('3', T.nome + ' — leitura silenciosa', '', '', 'tempo (s)', t.tempoLeitura + ' s', null, '');
       if (t.obs) add('3', T.nome + ' — observações', '', '', '', '', null, t.obs);
     });
     const m4 = a.m4 || {};

@@ -68,6 +68,13 @@ Auditoria do armazenamento encontrou riscos reais de perda, agora corrigidos:
 
 Teste novo `teste/seguranca_dados.js`: 11 situações de falha simuladas, todas aprovadas.
 
+## 6. Cronômetro da leitura silenciosa (Módulo 3)
+
+- Na tela do texto **LIDO pelo aluno (em silêncio)** há um cronômetro.
+- Ele **liga sozinho** ao tocar em 👁 Mostrar ao aluno e **para sozinho** ao tocar em ✕ voltar ao avaliador (ou em "Texto recolhido → Reconto"). Também pode ser ligado/parado/zerado à mão.
+- O aluno não vê o cronômetro (para não pressioná-lo).
+- O tempo aparece (editável) na tela de resultado do texto lido e vai para o Excel: coluna **Tempo leitura silenciosa (s)** na aba Resumo e uma linha na aba Itens.
+
 ## Como testar localmente
 
 ```bash
@@ -78,4 +85,4 @@ node teste/seguranca_dados.js  # simula falhas de armazenamento (precisa do Play
 Para testes de tela, o app é estático — basta servir a pasta `app/` (ex.: `npx http-server app`) e abrir no navegador ou simulador de celular.
 
 ---
-_Última atualização: segurança e redundância dos dados_
+_Última atualização: cronômetro da leitura silenciosa_
