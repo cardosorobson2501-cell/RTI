@@ -598,10 +598,10 @@
   function passosM5() {
     const a = av();
     const ps = [];
-    [['oral', 'oral', 12], ['comando', 'com', 10]].forEach(([k, chave, n]) => {
+    [['oral', 'oral', 12], ['comando', 'com', R.n5b(a)]].forEach(([k, chave, n]) => {
       const B = D.m5[k];
       ps.push(() => Object.assign({ sub: B.nome + ' · instruções' }, intro({ titulo: B.nome + ' (' + n + ')', tempo: k === 'oral' ? D.m5.tempo : null, roteiros: [B.roteiro], regras: B.regras })));
-      B.itens.forEach((it, i) => ps.push(() => ({
+      B.itens.slice(0, n).forEach((it, i) => ps.push(() => ({
         sub: (k === 'oral' ? '5a' : '5b') + ' ' + (i + 1) + '/' + n,
         html: '<div class="card">' + itemHead(k === 'oral' ? '5a · Vocabulário oral' : '5b · Vocabulário de comando', i + 1, n) +
           '<div class="estimulo md">' + esc(it[0]) + '</div>' +
@@ -616,7 +616,7 @@
         sub: 'Resultado',
         html: '<div class="card"><h2>Módulo 5 — resultado</h2><div class="stats">' +
           stat('5a Vocabulário oral', (c.vo.total ?? c.vo.parcial + '*') + ' / 24 · ' + fmt(c.vo.pct, '%'), c.C.vocabOral.alt ? 'alt' : 'destaque') +
-          stat('5b Vocabulário de comando', (c.vc.total ?? c.vc.parcial + '*') + ' / 20 · ' + fmt(c.vc.pct, '%'), c.C.vocabComando.alt ? 'alt' : 'destaque') + '</div>' +
+          stat('5b Vocabulário de comando', (c.vc.total ?? c.vc.parcial + '*') + ' / ' + c.vc.max + ' · ' + fmt(c.vc.pct, '%'), c.C.vocabComando.alt ? 'alt' : 'destaque') + '</div>' +
           (c.alerta5b ? '<div class="alerta">' + esc(D.m5.alerta5b) + '</div>' : '') +
           (c.C.vocabComando.alt && !c.alerta5b ? '<div class="alerta">Vocabulário de comando < 60%: alerta (não altera o perfil).</div>' : '') + '</div>',
         acao: botaoProxModulo('m5'),
@@ -994,7 +994,7 @@
     const a = {
       id: novoId(), criado: Date.now(), atualizado: Date.now(),
       cab: { nome: '', turma: PREF.turma || '', idade: '', data: hoje(), avaliador: PREF.avaliador || '', dominios: [], forma: null },
-      m0: { resp: [] }, m1: { pal: [], pse: [], lex: 0 }, m2: {}, m3: { A: {}, B: {} }, m4: { an: [], con: [] }, m5: { oral: [], com: [] }, m6: {}, m7: {}, res: {}, pos: {},
+      m0: { resp: [] }, m1: { pal: [], pse: [], lex: 0 }, m2: {}, m3: { A: {}, B: {} }, m4: { an: [], con: [] }, m5: { oral: [], com: [], v5b: 2 }, m6: {}, m7: {}, res: {}, pos: {},
     };
     DB[a.id] = a; salvar(a);
     S.avId = a.id; S.tela = 'passo'; S.mod = 'cab'; S.i = 0;
@@ -1066,7 +1066,12 @@
       } else if (b && b.dataset.fica) { S.errAberto = true; autoPararCrono(); render(); }
       else prox();
     },
-    nota: (d) => { const a = av(); setPath(a, d.p, Number(d.v)); salvar(a); prox(); },
+    nota: (d) => {
+      const a = av();
+      // avaliação antiga que ainda não começou o 5b passa a usar a lista nova (12 palavras)
+      if (/^m5\.com\./.test(d.p) && a.m5 && !a.m5.v5b && !(a.m5.com || []).some((x) => x != null)) a.m5.v5b = 2;
+      setPath(a, d.p, Number(d.v)); salvar(a); prox();
+    },
     // Módulo 4 (formato v2): o aluno toca na opção; o app corrige pelo gabarito
     m4esc: (d) => {
       const a = av(); const [tipo, idx] = d.p.split('.'); const i = Number(idx);
@@ -1257,7 +1262,7 @@
       'Tempo leitura silenciosa (s)': num(m3.lido ? ((a.m3 || {})[m3.lido] || {}).tempoLeitura : null),
       'Compreensão LEITORA %': num(m3.leitora), 'Compreensão ORAL %': num(m3.oral), 'Diferença oral − leitora (p.p.)': num(m3.diferenca),
       'M4 formato': (a.m4 && a.m4.formato) || ((a.m4 && ((a.m4.an || []).length || (a.m4.con || []).length)) ? 'avaliador lê (v1)' : ''), 'Anáfora (/6)': num(c.an.total), 'Anáfora %': num(c.an.pct), 'Conectivos (/8)': num(c.con.total), 'Conectivos %': num(c.con.pct),
-      'Vocab. oral (/24)': num(c.vo.total), 'Vocab. oral %': num(c.vo.pct), 'Vocab. comando (/20)': num(c.vc.total), 'Vocab. comando %': num(c.vc.pct),
+      'Vocab. oral (/24)': num(c.vo.total), 'Vocab. oral %': num(c.vo.pct), 'Vocab. comando (pontos)': num(c.vc.total), 'Vocab. comando (máx.)': c.vc.max, 'Vocab. comando %': num(c.vc.pct),
       'Alerta 5b << 5a': simNao(c.alerta5b),
       'Módulo 6 aplicado': m6.ativo ? 'Sim' : m6.ativo === false ? 'Pulado' : '',
       'Supressão (/12)': m6.ativo ? num(c.sup.total) : '', 'Repetição (/12)': m6.ativo ? num(c.rep.total) : '',
@@ -1325,7 +1330,7 @@
     D.m4.conectivos.itens.forEach((it, i) => add('4', '4b Conectivos', i + 1, it.rel, it.frase + ' → ' + it.ops[it.ok], okTxt((m4.con || [])[i]), okPts((m4.con || [])[i]), marcou4('con', i, it)));
     const m5 = a.m5 || {};
     D.m5.oral.itens.forEach((it, i) => add('5', '5a Vocabulário oral', i + 1, '', it[0], '', ((m5.oral || [])[i]) ?? null, ''));
-    D.m5.comando.itens.forEach((it, i) => add('5', '5b Vocabulário de comando', i + 1, '', it[0], '', ((m5.com || [])[i]) ?? null, ''));
+    D.m5.comando.itens.slice(0, R.n5b(a)).forEach((it, i) => add('5', '5b Vocabulário de comando', i + 1, '', it[0], '', ((m5.com || [])[i]) ?? null, ''));
     const m6 = a.m6 || {};
     if (m6.ativo) {
       D.m6.supressao.itens.forEach((it, i) => add('6', '6a Supressão', i + 1, it[1], it[0] + ' → ' + it[2], okTxt((m6.sup || [])[i]), okPts((m6.sup || [])[i]), ''));

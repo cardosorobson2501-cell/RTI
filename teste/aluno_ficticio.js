@@ -108,3 +108,15 @@ for (const it of D.m4.anafora.itens) {
 for (const it of D.m4.conectivos.itens) { assert.ok(it.frase.includes('___')); assert.ok(it.ok >= 0 && it.ok < it.ops.length); }
 assert.strictEqual(D.m0.perguntas.length, D.m0.segmentos.length, 'Módulo 0: cada pergunta tem respostas prontas');
 console.log('Módulo 4 v2 (trechos fiéis ao texto) e Módulo 0 (7 perguntas) → OK');
+
+// 5b: avaliações novas (v5b = 2) usam 12 palavras; antigas continuam com 10
+{
+  const novo = clone(aluno); novo.m5 = { oral: aluno.m5.oral, com: [2, 2, 2, 2, 1, 1, 0, 0, 0, 0, 2, 1], v5b: 2 };
+  const cn = R.calcular(novo, { pisoPCPM: 100 });
+  assert.strictEqual(D.m5.comando.itens.length, 12);
+  assert.strictEqual(cn.vc.max, 24); assert.strictEqual(cn.vc.total, 13); assert.strictEqual(cn.vc.pct, 54.2);
+  const incompleto = clone(novo); incompleto.m5.com = incompleto.m5.com.slice(0, 10);
+  assert.strictEqual(R.calcular(incompleto, { pisoPCPM: 100 }).vc.total, null, 'nova com 10 respondidas ainda está incompleta');
+  assert.strictEqual(c.vc.max, 20, 'avaliação antiga continua valendo 20');
+  console.log('5b com 12 palavras (novas) e 10 (antigas) → OK');
+}

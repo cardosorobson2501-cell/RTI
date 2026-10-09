@@ -84,6 +84,7 @@ Teste novo `teste/seguranca_dados.js`: 11 situações de falha simuladas, todas 
   - Botão **Não respondeu** (conta como erro) e tabela de **conferência** item a item no resultado.
   - Excel: coluna **M4 formato** (v1 = avaliador lia; v2 = aluno lê e toca) e, na aba Itens, a opção que o aluno marcou.
   - ⚠️ Os pontos de corte (< 60%) foram definidos para o formato oral. Com o texto visível os acertos tendem a subir; revisar depois das primeiras aplicações.
+- **5b (vocabulário de comando)**: passa de 10 para **12 palavras**, com **variação linguística** e **gênero textual** (matriz SAEB alinhada à BNCC e frequência nos comandos do ENEM 2009–2023). Resultado agora sobre 24 pontos. Avaliações feitas antes continuam com 10 palavras / 20 pontos (não ficam “incompletas”); no Excel, a coluna **Vocab. comando (máx.)** mostra 20 ou 24.
 - **Módulos 3 e 5**: o avaliador toca **na frase da rubrica** (2/1/0) que descreve a resposta, em vez de botões com números.
 
 ## Como testar localmente

@@ -338,7 +338,12 @@
         ['recurso (do texto)', 'Uma ferramenta usada no texto para causar um efeito, como repetição, imagem ou ironia.'],
         ['tema', 'O assunto principal do texto.'],
         ['conectivo', 'Palavra que liga partes de uma frase ou de um texto, como “mas”, “porque”, “e”.'],
+        // Acrescentadas em out/2026 (matriz SAEB-BNCC 9º ano e frequência nos comandos do ENEM 2009–2023)
+        ['variação linguística', 'As diferentes formas de usar a mesma língua, que mudam conforme a região, o grupo social, a idade ou a situação (mais formal ou mais informal).'],
+        ['gênero textual', 'O tipo de texto que circula na sociedade, reconhecido pela finalidade, pelo formato e pela linguagem, como notícia, receita, carta, anúncio ou conto.'],
       ],
+      // Avaliações feitas antes da mudança usam só as 10 primeiras palavras.
+      nAntigo: 10,
     },
     alerta5b: 'Se 5b ficar bem abaixo de 5a: considerar dificuldade com o formato/vocabulário de prova, e não com a linguagem em geral. Não tratar como Perfil B: ensinar explicitamente o vocabulário de comando (Tier 1, para a turma toda).',
   };
