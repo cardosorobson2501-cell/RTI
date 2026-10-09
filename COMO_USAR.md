@@ -42,12 +42,13 @@ Esse é o link do app. Guarde-o.
 1. **＋ Nova avaliação** → preencha nome, turma, Forma etc. (o app lembra avaliador e turma).
 2. Siga as telas: cada uma mostra **o que dizer (DIGA)**, as **regras** e **todas as respostas possíveis**.
    - ✓ **Correto** avança sozinho. ✗ **Erro** abre o campo "como o aluno leu" (Módulo 1) ou avança (demais módulos).
-   - **2 · 1 · 0** avançam sozinhos.
+   - Nas perguntas com nota **2 · 1 · 0** (Módulos 3 e 5), toque **na frase** que descreve a resposta do aluno; avança sozinho.
    - **←** volta uma tela. **☰** abre o menu com todos os módulos e o status de cada um.
 3. **Módulo 2 (fluência):** toque em **INICIAR**; toque nas palavras lidas com erro (ficam vermelhas; toque de novo desmarca).
    Aos 60 s o celular vibra e pede para você tocar na **última palavra lida**. Se o aluno acabar antes, toque em **Terminou**.
-4. **👁 Mostrar ao aluno** abre a lista/texto em tela cheia (como no Caderno de Estímulos). Toque em **✕ voltar ao avaliador** para voltar.
-5. No fim, **Resumo e Decisão**: o app marca os critérios alterados, mostra a árvore de decisão do manual e **sugere** o perfil.
+4. **Módulo 4 (coesão):** entregue o celular ao aluno. Ele lê o trecho/frase e **toca na resposta** (a tela não mostra o gabarito). Se ele travar ao ler uma palavra, você pode dizê-la. No fim, pegue o celular de volta e veja a conferência item a item.
+5. **👁 Mostrar ao aluno** abre a lista/texto em tela cheia (como no Caderno de Estímulos). Toque em **✕ voltar ao avaliador** para voltar.
+6. No fim, **Resumo e Decisão**: o app marca os critérios alterados, mostra a árvore de decisão do manual e **sugere** o perfil.
    Você **confirma ou troca** o perfil e preenche hipótese, meta e encaminhamento.
 
 Tudo é salvo a cada toque. Se o navegador fechar, é só abrir de novo — ele volta onde parou.

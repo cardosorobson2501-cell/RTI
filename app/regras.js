@@ -115,6 +115,13 @@
     return { total: resp === n ? tot : null, parcial: tot, resp, n, pct: resp === n ? pct(tot, n) : null };
   }
 
+  // Nº de palavras do 5b desta avaliação: as novas (m5.v5b = 2) usam a lista atual;
+  // as feitas antes de out/2026 usam só as 10 primeiras, para não virarem "incompletas".
+  function n5b(av) {
+    const m5 = (av && av.m5) || {};
+    return m5.v5b === 2 ? D.m5.comando.itens.length : (D.m5.comando.nAntigo || D.m5.comando.itens.length);
+  }
+
   function calc012(a, n) {
     const r = arr(a, n);
     const resp = respondidos(r);
@@ -146,7 +153,7 @@
     const an = calcOkList(av.m4 && av.m4.an, 6);
     const con = calcOkList(av.m4 && av.m4.con, 8);
     const vo = calc012(av.m5 && av.m5.oral, 12);
-    const vc = calc012(av.m5 && av.m5.com, 10);
+    const vc = calc012(av.m5 && av.m5.com, n5b(av));
     const m6 = av.m6 || {};
     const sup = calcOkList(m6.sup, 12);
     const rep = calcOkList(m6.rep, 12);
@@ -274,7 +281,7 @@
     const m4 = av.m4 || {};
     const m4Resp = respondidos(arr(m4.an, 6)) + respondidos(arr(m4.con, 8));
     const m5 = av.m5 || {};
-    const m5Resp = respondidos(arr(m5.oral, 12)) + respondidos(arr(m5.com, 10));
+    const m5Resp = respondidos(arr(m5.oral, 12)) + respondidos(arr(m5.com, n5b(av)));
     const m6 = av.m6 || {};
     const m6Resp = respondidos(arr(m6.sup, 12)) + respondidos(arr(m6.rep, 12)) + ((m6.nl || {}).tempo ? 1 : 0) + ((m6.nn || {}).tempo ? 1 : 0);
     const m7c = calcM7(av.m7);
@@ -286,14 +293,14 @@
       m2: st(m2Resp, 5),
       m3: st(m3Resp, 14),
       m4: st(m4Resp, 14),
-      m5: st(m5Resp, 22),
+      m5: st(m5Resp, 12 + n5b(av)),
       m6: (av.m6 || {}).ativo === false ? 'pulado' : (av.m6 || {}).ativo ? st(m6Resp, 26) : 'nao',
       m7: (av.m7 || {}).ativo === false ? 'pulado' : (av.m7 || {}).ativo ? st(m7c.resp, 28) : 'nao',
       res: res.perfilConf ? 'ok' : 'nao',
     };
   }
 
-  const R = { CORTES, N_TEXTO, calcular, textos, statusModulos, calcM1, calcM2, calcM3, pct };
+  const R = { CORTES, N_TEXTO, n5b, calcular, textos, statusModulos, calcM1, calcM2, calcM3, pct };
   root.REGRAS = R;
   if (typeof module !== 'undefined') module.exports = R;
 })(typeof window !== 'undefined' ? window : globalThis);

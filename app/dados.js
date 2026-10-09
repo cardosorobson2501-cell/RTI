@@ -26,6 +26,7 @@
       'Gosta de ler? O que lê fora da escola (celular, redes, religião, trabalho)?',
       'Onde sente mais dificuldade: ler as palavras, entender, lembrar, prestar atenção?',
       'Trabalha? Dorme bem? Algo que atrapalhe os estudos agora?',
+      'E o celular? Tem um? Quanto tempo usa por dia? Usa até tarde da noite?',
     ],
     engajamento: ['colaborou bem', 'oscilou', 'pouco engajado'],
     // Cada pergunta da folha dividida em partes com respostas prontas.
@@ -57,6 +58,12 @@
         { id: 'trabalha', p: 'Trabalha?', ops: ['não', 'sim, às vezes / bicos', 'sim, meio período', 'sim, período integral'] },
         { id: 'dorme', p: 'Dorme bem?', ops: ['sim', 'às vezes', 'não'] },
         { id: 'atrapalha', p: 'Algo que atrapalhe os estudos agora?', ops: ['não', 'sim (anote abaixo)'] },
+      ],
+      [
+        { id: 'celular', p: 'Tem celular próprio?', ops: ['sim', 'divide com alguém da família', 'não'] },
+        { id: 'celTempo', p: 'Quanto tempo usa o celular por dia (fora da escola)?', ops: ['menos de 1 h', '1 a 3 h', '3 a 5 h', 'mais de 5 h', 'não sabe'] },
+        { id: 'celUso', p: 'Usa mais para quê?', multi: true, ops: ['vídeos (TikTok, YouTube, Reels)', 'redes sociais', 'jogos', 'conversar / mensagens', 'estudar / pesquisar', 'ler (textos, livros, notícias)'] },
+        { id: 'celNoite', p: 'Usa o celular na cama, até tarde da noite?', ops: ['não', 'às vezes', 'quase todo dia'] },
       ],
     ],
   };
@@ -238,30 +245,36 @@
   D.m4 = {
     titulo: 'Módulo 4 — Coesão referencial e conectivos',
     tempo: '4 min',
+    // Formato v2 (out/2026): o ALUNO lê na tela e toca na resposta.
+    // Antes o avaliador lia em voz alta, com o texto recolhido — isso misturava
+    // memória do texto e compreensão oral com a habilidade de coesão.
+    // O trecho do texto fica visível (como no SAEB, descritores D2 e D15).
+    entregar: 'Entregue o celular ao aluno. Ele lê sozinho e toca na resposta. A tela não mostra o gabarito. Se ele travar ao ler uma palavra, você pode dizê-la (como no Módulo 2), mas não leia a frase inteira nem as opções.',
     anafora: {
       nome: '4a. Anáfora',
-      roteiro: 'Eu vou ler uma frase do texto que você já leu/ouviu. Me diga a quem (ou a quê) esta palavra está se referindo.',
+      roteiro: 'Agora você vai ler um pedaço do texto que já leu/ouviu. Uma palavra está pintada de amarelo. Toque na resposta que mostra a quem (ou a quê) essa palavra se refere.',
       regras: [
-        'O texto já foi recolhido. Leia a frase enfatizando a palavra destacada; releia se precisar.',
-        'Aceite a resposta com outras palavras, desde que aponte o referente certo.',
-        'Erro comum: apontar o assunto geral (“o mandacaru”, “o tatu-bola”) em vez do antecedente correto (“o caule”, “a barriga”).',
+        'O aluno lê o trecho na tela (o texto continua visível) e toca em uma das 3 opções. O app corrige sozinho.',
+        'Uma opção errada de propósito é o “assunto geral” do texto (ex.: “o mandacaru” no lugar de “o caule”), o erro mais comum.',
+        'Se o aluno não quiser responder, toque em “Não respondeu” (conta como erro).',
       ],
-      // alvo = palavra destacada (em negrito na folha)
+      pergunta: 'A palavra pintada de amarelo se refere a:',
+      // trecho: a palavra-alvo vai entre ** **. ok = índice da opção correta.
       itens: [
-        { texto: 'A', antes: 'O segredo do mandacaru está no caule. ', alvo: 'Ele', depois: ' é grosso e funciona como uma caixa-d\'água.', resp: 'Ao caule.' },
-        { texto: 'A', antes: 'Os espinhos também ajudam. ', alvo: 'Eles', depois: ' são, na verdade, folhas transformadas.', resp: 'Aos espinhos.' },
-        { texto: 'A', antes: 'Segundo a tradição popular, quando ', alvo: 'ele', depois: ' floresce na seca, é sinal de que a chuva está chegando.', resp: 'Ao mandacaru.' },
-        { texto: 'B', antes: '', alvo: 'Ele', depois: ' é pequeno, tem o corpo coberto por uma carapaça dura e só existe no Brasil.', resp: 'Ao tatu-bola.' },
-        { texto: 'B', antes: 'A carapaça protege a barriga, ', alvo: 'que', depois: ' é a parte mais frágil do corpo.', resp: 'À barriga (não à carapaça).' },
-        { texto: 'B', antes: 'Além disso, a destruição da caatinga [...] diminui o espaço onde ', alvo: 'ele', depois: ' vive.', resp: 'Ao tatu-bola.' },
+        { texto: 'A', trecho: 'O segredo do mandacaru está no caule. **Ele** é grosso e funciona como uma caixa-d\'água: guarda a água das poucas chuvas para os períodos de seca. Os espinhos também ajudam. Eles são, na verdade, folhas transformadas.', ops: ['o mandacaru', 'o caule', 'o segredo'], ok: 1 },
+        { texto: 'A', trecho: 'Ele é grosso e funciona como uma caixa-d\'água: guarda a água das poucas chuvas para os períodos de seca. Os espinhos também ajudam. **Eles** são, na verdade, folhas transformadas. Como são finos, deixam escapar pouca água e ainda protegem a planta de animais com sede.', ops: ['os períodos de seca', 'os animais', 'os espinhos'], ok: 2 },
+        { texto: 'A', trecho: 'Para muitos sertanejos, o mandacaru é mais do que uma planta. Segundo a tradição popular, quando **ele** floresce na seca, é sinal de que a chuva está chegando.', ops: ['o mandacaru', 'o sertanejo', 'o sinal'], ok: 0 },
+        { texto: 'B', trecho: 'Entre os animais da caatinga, poucos são tão curiosos quanto o tatu-bola. **Ele** é pequeno, tem o corpo coberto por uma carapaça dura e só existe no Brasil.', ops: ['o Brasil', 'o tatu-bola', 'o corpo'], ok: 1 },
+        { texto: 'B', trecho: 'Quando se sente ameaçado, ele se enrola completamente e vira uma bola quase perfeita. A carapaça protege a barriga, **que** é a parte mais frágil do corpo, e muitos predadores desistem de atacar.', ops: ['a carapaça', 'a bola', 'a barriga'], ok: 2 },
+        { texto: 'B', trecho: 'Como não corre nem cava buracos com rapidez, o tatu-bola é facilmente capturado por caçadores. Além disso, a destruição da caatinga para abrir pastos e plantações diminui o espaço onde **ele** vive.', ops: ['o tatu-bola', 'o espaço', 'o caçador'], ok: 0 },
       ],
     },
     conectivos: {
       nome: '4b. Conectivos',
-      roteiro: 'Vou falar uma frase incompleta e três palavras. Escolha a que fica melhor no lugar da lacuna.',
+      roteiro: 'Agora leia cada frase. Falta uma palavra no lugar do traço. Toque na palavra que fica melhor ali.',
       regras: [
-        'Fale a frase e as três opções em voz alta, sem mostrar por escrito, na ordem abaixo (a correta não fica sempre por último).',
-        'Não repita a frase mais de duas vezes.',
+        'O aluno lê a frase e as três opções na tela e toca na resposta. O app corrige sozinho.',
+        'Se o aluno não quiser responder, toque em “Não respondeu” (conta como erro).',
       ],
       itens: [
         { rel: 'Causa', frase: 'Ele chegou atrasado ___ o ônibus quebrou no caminho.', ops: ['porque', 'mas', 'então'], ok: 0 },
@@ -325,7 +338,12 @@
         ['recurso (do texto)', 'Uma ferramenta usada no texto para causar um efeito, como repetição, imagem ou ironia.'],
         ['tema', 'O assunto principal do texto.'],
         ['conectivo', 'Palavra que liga partes de uma frase ou de um texto, como “mas”, “porque”, “e”.'],
+        // Acrescentadas em out/2026 (matriz SAEB-BNCC 9º ano e frequência nos comandos do ENEM 2009–2023)
+        ['variação linguística', 'As diferentes formas de usar a mesma língua, que mudam conforme a região, o grupo social, a idade ou a situação (mais formal ou mais informal).'],
+        ['gênero textual', 'O tipo de texto que circula na sociedade, reconhecido pela finalidade, pelo formato e pela linguagem, como notícia, receita, carta, anúncio ou conto.'],
       ],
+      // Avaliações feitas antes da mudança usam só as 10 primeiras palavras.
+      nAntigo: 10,
     },
     alerta5b: 'Se 5b ficar bem abaixo de 5a: considerar dificuldade com o formato/vocabulário de prova, e não com a linguagem em geral. Não tratar como Perfil B: ensinar explicitamente o vocabulário de comando (Tier 1, para a turma toda).',
   };

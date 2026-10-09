@@ -250,3 +250,24 @@ details.texto-ref summary { font-weight: 600; color: var(--pri); padding: 8px 0;
 .modal { position: fixed; inset: 0; z-index: 180; background: rgba(0,0,0,.55); display: grid; place-items: center; padding: 16px; }
 .modal-in { background: var(--card); color: var(--ink); border-radius: 16px; padding: 18px; max-width: 480px; width: 100%; max-height: 90vh; overflow: auto; }
 .modal-in h2 { margin-top: 0; }
+
+/* rubrica tocável (Módulos 3 e 5): o avaliador toca na frase */
+.dica-toque { margin: 10px 0 4px; }
+.rubrica.toque { display: flex; flex-direction: column; gap: 8px; }
+.rubrica.toque button { display: flex; gap: 12px; align-items: center; width: 100%; text-align: left; font: inherit; font-size: 17px; line-height: 1.35; color: var(--ink);
+  background: var(--card); border: 2px solid var(--line); border-radius: var(--radius); padding: 12px; min-height: 64px; cursor: pointer; }
+.rubrica.toque button:active { transform: scale(.98); }
+.rubrica.toque .r2 { border-color: var(--ok); background: var(--ok-bg); }
+.rubrica.toque .r1 { border-color: var(--warn); background: var(--warn-bg); }
+.rubrica.toque .r0 { border-color: var(--err); background: var(--err-bg); }
+.rubrica.toque button.sel { outline: 4px solid var(--sel); outline-offset: 2px; }
+
+/* Módulo 4 (formato v2): tela que o aluno lê e toca */
+.aluno-tela .frase { font-size: 22px; line-height: 1.6; }
+.perg-aluno { font-size: 20px; font-weight: 700; margin: 16px 0 6px; }
+.opc-aluno .btn { font-size: 21px; min-height: 64px; }
+.lacuna { display: inline-block; min-width: 3.5em; border-bottom: 3px solid var(--ink); }
+.confere { width: 100%; border-collapse: collapse; font-size: 14px; }
+.confere th, .confere td { text-align: left; padding: 6px 4px; border-top: 1px solid var(--line); vertical-align: top; }
+.confere td.ok { color: var(--ok); font-weight: 600; }
+.confere td.err { color: var(--err); font-weight: 600; }
