@@ -168,15 +168,11 @@
     return '<div class="big2"><button class="btn err' + (v === false ? ' sel' : '') + '" data-a="okErr" data-p="' + path + '" data-v="0"' + (fica ? ' data-fica="1"' : '') + '>✗ Erro</button>' +
       '<button class="btn ok' + (v === true ? ' sel' : '') + '" data-a="okErr" data-p="' + path + '" data-v="1">✓ Correto</button></div>';
   }
-  function botoes210(path) {
+  // Rubrica em que o avaliador toca na FRASE que descreve a resposta (não no número)
+  function rubricaToque(path, r2, r1, r0) {
     const v = getPath(av(), path);
-    return '<div class="pontos">' + [2, 1, 0].map((n) => '<button class="btn p' + n + (v === n ? ' sel' : '') + '" data-a="nota" data-p="' + path + '" data-v="' + n + '">' + n + '</button>').join('') + '</div>';
-  }
-  function rubrica(r2, r1, r0) {
-    return '<div class="rubrica">' +
-      '<div class="r2"><b>2</b><span>' + esc(r2) + '</span></div>' +
-      '<div class="r1"><b>1</b><span>' + esc(r1) + '</span></div>' +
-      '<div class="r0"><b>0</b><span>' + esc(r0) + '</span></div></div>';
+    const linha = (n, txt) => '<button class="r' + n + (v === n ? ' sel' : '') + '" data-a="nota" data-p="' + path + '" data-v="' + n + '"><b>' + n + '</b><span>' + esc(txt) + '</span></button>';
+    return '<p class="muted dica-toque">Toque na frase que descreve a resposta do aluno:</p><div class="rubrica toque">' + linha(2, r2) + linha(1, r1) + linha(0, r0) + '</div>';
   }
   function itemHead(tag, n, total, extraTag) {
     return '<div class="item-head"><span class="tag pri">' + esc(tag) + '</span>' + (extraTag || '') + '<span class="muted">' + n + ' de ' + total + '</span></div>';
@@ -279,9 +275,10 @@
   function passosM0() {
     const a = av();
     const ps = [() => Object.assign({ sub: 'Instruções' }, intro({ titulo: D.m0.titulo, tempo: D.m0.tempo, fazer: D.m0.roteiro, regras: D.m0.regras }))];
+    const nP = D.m0.perguntas.length;
     D.m0.perguntas.forEach((p, i) => ps.push(() => ({
-      sub: 'Pergunta ' + (i + 1) + ' de 6',
-      html: '<div class="card">' + itemHead('Conversa', i + 1, 6) + '<div class="say">' + esc(p) + '</div>' +
+      sub: 'Pergunta ' + (i + 1) + ' de ' + nP,
+      html: '<div class="card">' + itemHead('Conversa', i + 1, nP) + '<div class="say">' + esc(p) + '</div>' +
         D.m0.segmentos[i].map((sg) => '<label class="f">' + esc(sg.p) + (sg.multi ? ' <span class="muted">(pode marcar mais de uma)</span>' : '') + '</label>' +
           chips('m0.op.' + sg.id, sg.ops, !!sg.multi)).join('') +
         campo('m0.resp.' + i, 'Outra resposta / observação (opcional)', 'text', 'placeholder="escreva só se precisar" autocomplete="off"') + '</div>',
@@ -512,8 +509,8 @@
       T.perguntas.forEach((q, j) => ps.push(() => ({
         sub: T.nome + ' · pergunta ' + (j + 1) + '/6',
         html: '<div class="card">' + itemHead(q.tipo, j + 1, 6, tagModo) +
-          '<div class="say">' + esc(q.p) + '</div>' + rubrica(q.r2, q.r1, q.r0) + '</div>',
-        acao: botoes210(base + '.perg.' + j),
+          '<div class="say">' + esc(q.p) + '</div>' + rubricaToque(base + '.perg.' + j, q.r2, q.r1, q.r0) + '</div>',
+        acao: '',
       })));
       ps.push(() => {
         const c = R.calcM3(a.m3, forma)[k];
@@ -550,32 +547,47 @@
     const a = av();
     const ps = [];
     const An = D.m4.anafora, Co = D.m4.conectivos;
-    ps.push(() => Object.assign({ sub: '4a · instruções' }, intro({ titulo: An.nome + ' (6)', tempo: D.m4.tempo, roteiros: [An.roteiro], regras: An.regras })));
+    // Tela que o ALUNO vê e toca: sem gabarito. tipo = 'an' | 'con'
+    const opcoesAluno = (tipo, i, it) => {
+      const esc0 = ((a.m4[tipo + 'Esc']) || [])[i];
+      return '<div class="opc-aluno">' + it.ops.map((o, j) =>
+        '<button class="btn' + (esc0 === j ? ' sel' : '') + '" data-a="m4esc" data-p="' + tipo + '.' + i + '" data-v="' + j + '">' + esc(o) + '</button>').join('') + '</div>';
+    };
+    const naoResp = (tipo, i) => '<button class="btn small ghost" data-a="m4esc" data-p="' + tipo + '.' + i + '" data-v="nr">Não respondeu</button>';
+    const trechoHTML = (t) => String(t).split('**').map((parte, k) => (k % 2 ? '<mark>' + esc(parte) + '</mark>' : esc(parte))).join('');
+    ps.push(() => Object.assign({ sub: '4a · instruções' }, intro({ titulo: An.nome + ' (6)', tempo: D.m4.tempo, fazer: D.m4.entregar, roteiros: [An.roteiro], regras: An.regras, botao: 'Entregar ao aluno →' })));
     An.itens.forEach((it, i) => ps.push(() => ({
       sub: 'Anáfora ' + (i + 1) + '/6',
-      html: '<div class="card">' + itemHead('Texto ' + it.texto + ' · ' + D.m3.textos[it.texto].titulo, i + 1, 6) +
-        '<p class="muted">Leia a frase enfatizando a palavra destacada e pergunte: “A quem (ou a quê) esta palavra está se referindo?”</p>' +
-        '<div class="frase">' + esc(it.antes) + '<mark>' + esc(it.alvo) + '</mark>' + esc(it.depois) + '</div>' +
-        '<div class="gabarito">Resposta correta: <b>' + esc(it.resp) + '</b></div></div>',
-      acao: botoesOkErr('m4.an.' + i),
+      html: '<div class="card aluno-tela"><div class="item-head"><span class="muted">' + (i + 1) + ' de 6</span></div>' +
+        '<div class="frase">' + trechoHTML(it.trecho) + '</div>' +
+        '<p class="perg-aluno">' + esc(An.pergunta) + '</p>' + opcoesAluno('an', i, it) + '</div>',
+      acao: naoResp('an', i),
     })));
-    ps.push(() => Object.assign({ sub: '4b · instruções' }, intro({ titulo: Co.nome + ' (8)', roteiros: [Co.roteiro], regras: Co.regras })));
+    ps.push(() => Object.assign({ sub: '4b · instruções' }, intro({ titulo: Co.nome + ' (8)', fazer: 'O aluno continua com o celular.', roteiros: [Co.roteiro], regras: Co.regras, botao: 'Continuar →' })));
     Co.itens.forEach((it, i) => ps.push(() => ({
       sub: 'Conectivos ' + (i + 1) + '/8',
-      html: '<div class="card">' + itemHead(it.rel, i + 1, 8) +
-        '<div class="say">' + esc(it.frase) + '</div><p class="muted" style="margin-bottom:0">Opções — fale nesta ordem:</p>' +
-        '<div class="opcoes">' + it.ops.map((o, j) => '<span class="' + (j === it.ok ? 'certa' : '') + '"><i>' + (j + 1) + 'ª</i>' + esc(o) + '</span>').join('') + '</div>' +
-        '<div class="gabarito">Correta: <b>' + esc(it.ops[it.ok]) + '</b></div></div>',
-      acao: botoesOkErr('m4.con.' + i),
+      html: '<div class="card aluno-tela"><div class="item-head"><span class="muted">' + (i + 1) + ' de 8</span></div>' +
+        '<div class="frase">' + esc(it.frase).replace('___', '<span class="lacuna"></span>') + '</div>' +
+        '<p class="perg-aluno">Qual palavra fica melhor no lugar do traço?</p>' + opcoesAluno('con', i, it) + '</div>',
+      acao: naoResp('con', i),
     })));
     ps.push(() => {
       const c = R.calcular(a, CFG);
+      // conferência item a item para o avaliador (o aluno não viu o gabarito)
+      const linha = (tipo, i, it, rotulo) => {
+        const v = (a.m4[tipo] || [])[i]; const e = ((a.m4[tipo + 'Esc']) || [])[i];
+        const marcou = e === 'nr' ? 'não respondeu' : (e != null ? it.ops[e] : '—');
+        return '<tr><td>' + esc(rotulo) + '</td><td class="' + (v === true ? 'ok' : v === false ? 'err' : '') + '">' + (v === true ? '✓' : v === false ? '✗' : '—') + ' ' + esc(marcou) + '</td><td class="muted">' + esc(it.ops[it.ok]) + '</td></tr>';
+      };
       return {
         sub: 'Resultado',
-        html: '<div class="card"><h2>Módulo 4 — resultado</h2><div class="stats">' +
+        html: '<div class="card"><h2>Módulo 4 — resultado</h2><p class="muted">Pegue o celular de volta.</p><div class="stats">' +
           stat('Anáfora', (c.an.total ?? c.an.parcial + '*') + ' / 6 · ' + fmt(c.an.pct, '%'), c.C.anafora.alt ? 'alt' : 'destaque') +
           stat('Conectivos', (c.con.total ?? c.con.parcial + '*') + ' / 8 · ' + fmt(c.con.pct, '%'), c.C.conectivos.alt ? 'alt' : 'destaque') + '</div>' +
-          (c.an.resp < 6 || c.con.resp < 8 ? '<div class="alerta">Há itens sem resposta.</div>' : '') + '</div>',
+          (c.an.resp < 6 || c.con.resp < 8 ? '<div class="alerta">Há itens sem resposta.</div>' : '') +
+          '<h3>Conferência</h3><table class="confere"><tr><th>Item</th><th>Aluno marcou</th><th>Correta</th></tr>' +
+          An.itens.map((it, i) => linha('an', i, it, '4a·' + (i + 1))).join('') +
+          Co.itens.map((it, i) => linha('con', i, it, '4b·' + (i + 1) + ' ' + it.rel)).join('') + '</table></div>',
         acao: botaoProxModulo('m4'),
       };
     });
@@ -594,8 +606,8 @@
         html: '<div class="card">' + itemHead(k === 'oral' ? '5a · Vocabulário oral' : '5b · Vocabulário de comando', i + 1, n) +
           '<div class="estimulo md">' + esc(it[0]) + '</div>' +
           '<p class="muted">“O que quer dizer <b>' + esc(it[0]) + '</b>?” · Se só der exemplo: “E o que ela significa?”</p>' +
-          rubrica(it[1], B.um, B.zero) + '</div>',
-        acao: botoes210('m5.' + chave + '.' + i),
+          rubricaToque('m5.' + chave + '.' + i, it[1], B.um, B.zero) + '</div>',
+        acao: '',
       })));
     });
     ps.push(() => {
@@ -1055,6 +1067,17 @@
       else prox();
     },
     nota: (d) => { const a = av(); setPath(a, d.p, Number(d.v)); salvar(a); prox(); },
+    // Módulo 4 (formato v2): o aluno toca na opção; o app corrige pelo gabarito
+    m4esc: (d) => {
+      const a = av(); const [tipo, idx] = d.p.split('.'); const i = Number(idx);
+      const it = (tipo === 'an' ? D.m4.anafora : D.m4.conectivos).itens[i];
+      const j = d.v === 'nr' ? 'nr' : Number(d.v);
+      a.m4 = a.m4 || { an: [], con: [] };
+      a.m4[tipo] = a.m4[tipo] || []; a.m4[tipo + 'Esc'] = a.m4[tipo + 'Esc'] || [];
+      a.m4[tipo][i] = j === it.ok; a.m4[tipo + 'Esc'][i] = j;
+      a.m4.formato = 'aluno lê e toca (v2)';
+      salvar(a); vibrar(15); prox();
+    },
     setAvanca: (d) => { const a = av(); setPath(a, d.p, d.v); salvar(a); prox(); },
     toggle: (d) => { const a = av(); setPath(a, d.p, !getPath(a, d.p)); salvar(a); render(); },
     toggleR: (d) => { const a = av(); setPath(a, d.p, !getPath(a, d.p)); salvar(a); render(); },
@@ -1233,7 +1256,7 @@
       'Texto B reconto (/10)': m3.B.reconto, 'Texto B perguntas (/12)': num(m3.B.perguntas), 'Texto B %': num(m3.B.pct),
       'Tempo leitura silenciosa (s)': num(m3.lido ? ((a.m3 || {})[m3.lido] || {}).tempoLeitura : null),
       'Compreensão LEITORA %': num(m3.leitora), 'Compreensão ORAL %': num(m3.oral), 'Diferença oral − leitora (p.p.)': num(m3.diferenca),
-      'Anáfora (/6)': num(c.an.total), 'Anáfora %': num(c.an.pct), 'Conectivos (/8)': num(c.con.total), 'Conectivos %': num(c.con.pct),
+      'M4 formato': (a.m4 && a.m4.formato) || ((a.m4 && ((a.m4.an || []).length || (a.m4.con || []).length)) ? 'avaliador lê (v1)' : ''), 'Anáfora (/6)': num(c.an.total), 'Anáfora %': num(c.an.pct), 'Conectivos (/8)': num(c.con.total), 'Conectivos %': num(c.con.pct),
       'Vocab. oral (/24)': num(c.vo.total), 'Vocab. oral %': num(c.vo.pct), 'Vocab. comando (/20)': num(c.vc.total), 'Vocab. comando %': num(c.vc.pct),
       'Alerta 5b << 5a': simNao(c.alerta5b),
       'Módulo 6 aplicado': m6.ativo ? 'Sim' : m6.ativo === false ? 'Pulado' : '',
@@ -1297,8 +1320,9 @@
       if (t.obs) add('3', T.nome + ' — observações', '', '', '', '', null, t.obs);
     });
     const m4 = a.m4 || {};
-    D.m4.anafora.itens.forEach((it, i) => add('4', '4a Anáfora', i + 1, 'Texto ' + it.texto, it.antes + '[' + it.alvo + ']' + it.depois, okTxt((m4.an || [])[i]), okPts((m4.an || [])[i]), ''));
-    D.m4.conectivos.itens.forEach((it, i) => add('4', '4b Conectivos', i + 1, it.rel, it.frase, okTxt((m4.con || [])[i]), okPts((m4.con || [])[i]), ''));
+    const marcou4 = (tipo, i, it) => { const e = (m4[tipo + 'Esc'] || [])[i]; return e === 'nr' ? 'aluno marcou: não respondeu' : e != null ? 'aluno marcou: ' + it.ops[e] : ''; };
+    D.m4.anafora.itens.forEach((it, i) => add('4', '4a Anáfora', i + 1, 'Texto ' + it.texto, it.trecho.replace(/\*\*(.+?)\*\*/, '[$1]') + ' → ' + it.ops[it.ok], okTxt((m4.an || [])[i]), okPts((m4.an || [])[i]), marcou4('an', i, it)));
+    D.m4.conectivos.itens.forEach((it, i) => add('4', '4b Conectivos', i + 1, it.rel, it.frase + ' → ' + it.ops[it.ok], okTxt((m4.con || [])[i]), okPts((m4.con || [])[i]), marcou4('con', i, it)));
     const m5 = a.m5 || {};
     D.m5.oral.itens.forEach((it, i) => add('5', '5a Vocabulário oral', i + 1, '', it[0], '', ((m5.oral || [])[i]) ?? null, ''));
     D.m5.comando.itens.forEach((it, i) => add('5', '5b Vocabulário de comando', i + 1, '', it[0], '', ((m5.com || [])[i]) ?? null, ''));

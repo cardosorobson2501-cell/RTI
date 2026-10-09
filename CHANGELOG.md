@@ -75,6 +75,17 @@ Teste novo `teste/seguranca_dados.js`: 11 situações de falha simuladas, todas 
 - O aluno não vê o cronômetro (para não pressioná-lo).
 - O tempo aparece (editável) na tela de resultado do texto lido e vai para o Excel: coluna **Tempo leitura silenciosa (s)** na aba Resumo e uma linha na aba Itens.
 
+## 7. Ajustes após aplicações-teste (out/2026)
+
+- **Módulo 0**: nova pergunta 7 sobre o **celular** (tem celular próprio, horas por dia, para que usa, uso na cama até tarde). Vai para o Excel como as demais.
+- **Módulo 4 (formato v2)**: o **aluno lê na tela e toca na resposta**; o app corrige sozinho e não mostra o gabarito para o aluno.
+  - **Anáfora**: o trecho do texto fica visível (antes o texto era recolhido e o avaliador lia a frase — 3 dos 6 itens dependiam de lembrar o texto, o que misturava memória com coesão). Cada item tem 3 opções; uma delas é o “assunto geral” do texto, o erro mais comum. Os trechos são idênticos aos textos do Módulo 3 (conferido por script).
+  - **Conectivos**: frase com lacuna e 3 opções tocáveis, na mesma ordem de antes.
+  - Botão **Não respondeu** (conta como erro) e tabela de **conferência** item a item no resultado.
+  - Excel: coluna **M4 formato** (v1 = avaliador lia; v2 = aluno lê e toca) e, na aba Itens, a opção que o aluno marcou.
+  - ⚠️ Os pontos de corte (< 60%) foram definidos para o formato oral. Com o texto visível os acertos tendem a subir; revisar depois das primeiras aplicações.
+- **Módulos 3 e 5**: o avaliador toca **na frase da rubrica** (2/1/0) que descreve a resposta, em vez de botões com números.
+
 ## Como testar localmente
 
 ```bash
@@ -85,4 +96,4 @@ node teste/seguranca_dados.js  # simula falhas de armazenamento (precisa do Play
 Para testes de tela, o app é estático — basta servir a pasta `app/` (ex.: `npx http-server app`) e abrir no navegador ou simulador de celular.
 
 ---
-_Última atualização: cronômetro da leitura silenciosa_
+_Última atualização: ajustes após aplicações-teste (celular, Módulo 4 v2, rubrica tocável)_

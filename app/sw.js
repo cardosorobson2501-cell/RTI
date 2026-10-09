@@ -1,6 +1,6 @@
 /* Guarda o app no aparelho para funcionar sem internet.
    Ao mudar qualquer arquivo do app, aumente o número da VERSAO. */
-const VERSAO = 'tier2-v6';
+const VERSAO = 'tier2-v7';
 const ARQUIVOS = [
   './', './index.html', './style.css', './dados.js', './regras.js', './armazenamento.js', './app.js',
   './vendor/xlsx.full.min.js', './manifest.json',

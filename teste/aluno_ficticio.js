@@ -97,3 +97,14 @@ const cc = clone(aluno); cc.m5.oral = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0]; asse
 assert.strictEqual(perfil({ cab: {} }), null);
 console.log('Perfis de controle: E, D, B, B (anáfora+conectivos), C e incompleto → OK');
 console.log('\nTODOS OS TESTES PASSARAM ✔\n');
+
+// Módulo 4 v2: trechos da anáfora idênticos aos textos do Módulo 3; gabaritos válidos
+for (const it of D.m4.anafora.itens) {
+  const full = D.m3.textos[it.texto].paragrafos.join(' ');
+  assert.ok(full.includes(it.trecho.replace(/\*\*/g, '')), 'trecho difere do texto ' + it.texto + ': ' + it.trecho.slice(0, 40));
+  assert.strictEqual((it.trecho.match(/\*\*/g) || []).length, 2, 'cada trecho tem uma palavra-alvo');
+  assert.ok(it.ok >= 0 && it.ok < it.ops.length);
+}
+for (const it of D.m4.conectivos.itens) { assert.ok(it.frase.includes('___')); assert.ok(it.ok >= 0 && it.ok < it.ops.length); }
+assert.strictEqual(D.m0.perguntas.length, D.m0.segmentos.length, 'Módulo 0: cada pergunta tem respostas prontas');
+console.log('Módulo 4 v2 (trechos fiéis ao texto) e Módulo 0 (7 perguntas) → OK');
