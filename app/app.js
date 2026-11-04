@@ -585,9 +585,9 @@
           stat('Anáfora', (c.an.total ?? c.an.parcial + '*') + ' / 6 · ' + fmt(c.an.pct, '%'), c.C.anafora.alt ? 'alt' : 'destaque') +
           stat('Conectivos', (c.con.total ?? c.con.parcial + '*') + ' / 8 · ' + fmt(c.con.pct, '%'), c.C.conectivos.alt ? 'alt' : 'destaque') + '</div>' +
           (c.an.resp < 6 || c.con.resp < 8 ? '<div class="alerta">Há itens sem resposta.</div>' : '') +
-          '<h3>Conferência</h3><table class="confere"><tr><th>Item</th><th>Aluno marcou</th><th>Correta</th></tr>' +
+          '<details class="gab"><summary>👁 Ver gabarito e conferência item a item</summary><table class="confere"><tr><th>Item</th><th>Aluno marcou</th><th>Correta</th></tr>' +
           An.itens.map((it, i) => linha('an', i, it, '4a·' + (i + 1))).join('') +
-          Co.itens.map((it, i) => linha('con', i, it, '4b·' + (i + 1) + ' ' + it.rel)).join('') + '</table></div>',
+          Co.itens.map((it, i) => linha('con', i, it, '4b·' + (i + 1) + ' ' + it.rel)).join('') + '</table></details></div>',
         acao: botaoProxModulo('m4'),
       };
     });
@@ -654,7 +654,7 @@
       html: '<div class="card">' + itemHead('6a · Supressão', i + 1, 12) +
         '<div class="say">Diga <b>' + esc(it[0]) + '</b> sem o <b>' + esc(it[1]) + '</b>.</div>' +
         '<div class="estimulo md">' + esc(it[0]) + ' − ' + esc(it[1]) + '</div>' +
-        '<div class="gabarito">Resposta esperada: <b>' + esc(it[2]) + '</b></div></div>',
+        '<details class="gab"><summary>👁 Ver gabarito</summary><div class="gabarito">Resposta esperada: <b>' + esc(it[2]) + '</b></div></details></div>',
       acao: botoesOkErr('m6.sup.' + i),
     })));
     ps.push(() => Object.assign({ sub: '6b · instruções' }, intro({ titulo: M.repeticao.nome + ' (12)', roteiros: [M.repeticao.roteiro], regras: M.repeticao.regras })));

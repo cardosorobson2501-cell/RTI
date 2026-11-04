@@ -98,3 +98,8 @@ Para testes de tela, o app é estático — basta servir a pasta `app/` (ex.: `n
 
 ---
 _Última atualização: ajustes após aplicações-teste (celular, Módulo 4 v2, rubrica tocável)_
+
+## Gabarito escondido por padrão
+- Módulo 4 (resultado): a conferência com a coluna "Correta" só aparece ao tocar em "👁 Ver gabarito".
+- Módulo 6a (Supressão): "Resposta esperada" só aparece ao tocar em "👁 Ver gabarito".
+- As telas do aluno (anáfora e conectivos) continuam sem nenhum gabarito.
