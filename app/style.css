@@ -271,3 +271,9 @@ details.texto-ref summary { font-weight: 600; color: var(--pri); padding: 8px 0;
 .confere th, .confere td { text-align: left; padding: 6px 4px; border-top: 1px solid var(--line); vertical-align: top; }
 .confere td.ok { color: var(--ok); font-weight: 600; }
 .confere td.err { color: var(--err); font-weight: 600; }
+
+/* gabarito escondido: só aparece se o avaliador tocar */
+details.gab { margin: 8px 0; }
+details.gab > summary { cursor: pointer; padding: 10px 12px; border-radius: 10px; background: #eef1f5; color: #445; font-weight: 600; list-style: none; }
+details.gab > summary::-webkit-details-marker { display: none; }
+details.gab[open] > summary { margin-bottom: 6px; }
